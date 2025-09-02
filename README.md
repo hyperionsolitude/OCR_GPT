@@ -7,10 +7,13 @@ A powerful Android application that combines Optical Character Recognition (OCR)
 - **📷 OCR Processing**: Extract text from images using ML Kit
 - **🤖 AI Integration**: Connect to Groq API for intelligent responses
 - **💬 Conversation Context**: Maintain conversation history for follow-up questions
-- **🔄 Multiple AI Models**: Support for various AI models (Mistral, Gemma, Llama)
+- **🧠 Dynamic Models**: Fetch available text models at runtime; select one or many
+- **🔑 Multiple API Keys**: Add/manage multiple keys with rotation and failover
 - **📱 Modern UI**: Clean, intuitive interface with WebView for rich text display
 - **✂️ Image Cropping**: Built-in image cropping functionality
 - **📋 Copy/Paste**: Easy copying of prompts and responses
+- **🌙 Dark Theme**: Consistent dark-themed dialogs and controls
+- **🌍 Language Matching**: AI automatically replies in the input language
 
 ## Prerequisites
 
@@ -29,7 +32,8 @@ A powerful Android application that combines Optical Character Recognition (OCR)
 
 4. **Configure your Groq API key**:
    - The app will prompt you for your API key on first launch
-   - Or long-press the mode toggle button to access API key settings
+   - Access `⚙️ Settings` → `🔑 Manage API Keys` anytime to add/edit keys
+   - Long-press the mode toggle button as a shortcut to API key settings
    - Get your API key from https://console.groq.com/
 
 5. **Build and run**:
@@ -55,7 +59,22 @@ A powerful Android application that combines Optical Character Recognition (OCR)
 - **Follow-up questions** work with full context
 - **"🆕 New Chat"** button to start fresh conversations
 - **Conversation history** automatically maintained
-- **Multiple AI models** support for different response styles
+- **Multiple AI models**: choose a model or run all selected models
+
+### Settings Menu (⚙️)
+- **🔑 Manage API Keys**: Add, edit, delete, activate/deactivate, reset failed, test all
+- **🤖 Select AI Models**: Fetch latest Groq text models and multi-select via checkboxes
+- **ℹ️ About**: App info and links
+
+### Model Management
+- Models are fetched dynamically from Groq API and filtered to text-only
+- Use the dialog to select one or many models; quick buttons for Select All / Deselect All
+- "All Models" option in the spinner runs the prompt across all selected models and aggregates outputs
+
+### API Key Management
+- Add multiple API keys and mark them active/inactive
+- Keys rotate in a round‑robin manner to distribute usage and handle rate limits
+- Automatic fail tracking disables repeatedly failing keys; you can reset failed
 
 ## Project Structure
 
@@ -107,6 +126,14 @@ The app integrates with Groq API for AI responses. The app automatically fetches
 - Models are sorted alphabetically for consistent ordering
 - Fallback to default models if API is unavailable
 
+### Language Behavior
+- The AI automatically detects the user's input language and responds in the same language
+- If the prompt is in English, replies are in English; Arabic → Arabic; etc.
+
+### Permissions
+- On first camera use, the app prompts for the Camera permission via the system dialog
+- If denied, a helpful message explains why the permission is needed
+
 ## Building Without Downloads
 
 This project includes:
@@ -118,6 +145,12 @@ This project includes:
 The only external requirements are:
 - Android SDK (standard development requirement)
 - Groq API key (for AI functionality)
+
+Tip: After fresh clone, you can immediately build and install:
+```bash
+./gradlew assembleDebug
+./gradlew installDebug
+```
 
 ## Troubleshooting
 
