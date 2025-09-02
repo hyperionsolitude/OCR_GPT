@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OCR GPT</string>
+    <string name="capture">Capture</string>
+    <string name="gallery">Gallery</string>
+    <string name="process_ocr">Process OCR</string>
+    <string name="extracted_text">Extracted Text:</string>
+    <string name="ai_response">AI Response:</string>
+    <string name="no_text_extracted">No text extracted yet...</string>
+    <string name="no_ai_response">No AI response yet...</string>
+    <string name="processing">Processing...</string>
+    <string name="error_processing">Error processing image</string>
+    <string name="camera_permission_required">Camera permission is required</string>
+</resources> 

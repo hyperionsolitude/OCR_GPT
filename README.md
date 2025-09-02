@@ -1,0 +1,145 @@
+# OCR GPT Android App
+
+A powerful Android application that combines Optical Character Recognition (OCR) with AI-powered question answering and conversational capabilities.
+
+## Features
+
+- **📷 OCR Processing**: Extract text from images using ML Kit
+- **🤖 AI Integration**: Connect to Groq API for intelligent responses
+- **💬 Conversation Context**: Maintain conversation history for follow-up questions
+- **🔄 Multiple AI Models**: Support for various AI models (Mistral, Gemma, Llama)
+- **📱 Modern UI**: Clean, intuitive interface with WebView for rich text display
+- **✂️ Image Cropping**: Built-in image cropping functionality
+- **📋 Copy/Paste**: Easy copying of prompts and responses
+
+## Prerequisites
+
+- Android Studio (latest version)
+- Android SDK (API level 21 or higher)
+- Android device or emulator
+- Groq API key
+
+## Setup Instructions
+
+1. **Clone or download** this project
+2. **Open in Android Studio**
+3. **Set up Android SDK**:
+   - Set `ANDROID_HOME` environment variable to your Android SDK path
+   - Or update `local.properties` with your SDK path: `sdk.dir=/path/to/your/Android/Sdk`
+
+4. **Configure your Groq API key**:
+   - The app will prompt you for your API key on first launch
+   - Or long-press the mode toggle button to access API key settings
+   - Get your API key from https://console.groq.com/
+
+5. **Build and run**:
+   ```bash
+   ./gradlew assembleDebug
+   ./gradlew installDebug
+   ```
+
+## Usage
+
+### OCR Mode
+1. **Capture or select** an image containing text
+2. **Crop** the image to focus on relevant text
+3. **Process OCR** to extract text
+4. **Send to AI** for intelligent analysis and answers
+
+### Chat Mode
+1. **Switch to Chat Mode** using the toggle button
+2. **Type your questions** directly
+3. **Get AI responses** with conversation context maintained
+
+### Conversation Features
+- **Follow-up questions** work with full context
+- **"🆕 New Chat"** button to start fresh conversations
+- **Conversation history** automatically maintained
+- **Multiple AI models** support for different response styles
+
+## Project Structure
+
+```
+android/
+├── app/
+│   ├── src/main/
+│   │   ├── java/com/ocrgpt/
+│   │   │   ├── MainActivity.kt          # Main app logic
+│   │   │   ├── CustomCropActivity.kt    # Image cropping
+│   │   │   └── ReviewImageActivity.kt   # Image review
+│   │   ├── res/
+│   │   │   ├── layout/                  # UI layouts
+│   │   │   ├── values/                  # App resources
+│   │   │   └── drawable/                # Images and icons
+│   │   └── AndroidManifest.xml
+│   └── build.gradle                     # App dependencies
+├── gradle/
+│   └── wrapper/                         # Gradle wrapper files
+├── build.gradle                         # Project configuration
+├── gradle.properties                    # Gradle settings
+├── settings.gradle                      # Project settings
+├── gradlew                              # Gradle wrapper script
+└── local.properties                     # SDK path (update this)
+```
+
+## Dependencies
+
+- **ML Kit**: Text recognition from images
+- **CameraX**: Camera functionality
+- **OkHttp**: Network requests to Groq API
+- **Kotlin Coroutines**: Asynchronous operations
+- **WebView**: Rich text display with markdown support
+
+## API Integration
+
+The app integrates with Groq API for AI responses. The app automatically fetches available text-based models from the Groq API at runtime, ensuring you always have access to the latest models. If the API is unavailable, it falls back to default models.
+
+### Getting Your API Key
+1. Visit [Groq Console](https://console.groq.com/)
+2. Sign up or log in to your account
+3. Navigate to the "API Keys" section
+4. Create a new API key
+5. The app will prompt you to enter this key on first launch
+
+### Model Management
+- Models are fetched dynamically from Groq API
+- Only text-based models are included (excludes image, TTS, etc.)
+- Models are sorted alphabetically for consistent ordering
+- Fallback to default models if API is unavailable
+
+## Building Without Downloads
+
+This project includes:
+- ✅ Gradle wrapper (no need to install Gradle)
+- ✅ All source code
+- ✅ Resource files
+- ✅ Build configuration
+
+The only external requirements are:
+- Android SDK (standard development requirement)
+- Groq API key (for AI functionality)
+
+## Troubleshooting
+
+### Build Issues
+- Ensure Android SDK is properly configured
+- Check that `local.properties` has correct SDK path
+- Verify Gradle wrapper permissions: `chmod +x gradlew`
+
+### API Issues
+- Verify Groq API key is valid
+- Check internet connection
+- Ensure API key has sufficient credits
+
+### OCR Issues
+- Use clear, well-lit images
+- Ensure text is properly oriented
+- Try cropping to focus on relevant text
+
+## License
+
+This project is provided as-is for educational and development purposes.
+
+## Support
+
+For issues or questions, please check the troubleshooting section above or review the source code comments for implementation details. 

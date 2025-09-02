@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="12dp"
+    android:background="#3c3c3c"
+    android:layout_marginBottom="4dp"
+    android:gravity="center_vertical"
+    android:elevation="1dp">
+
+    <CheckBox
+        android:id="@+id/checkbox_selected"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_model_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Model Name"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#ffffff" />
+
+        <TextView
+            android:id="@+id/tv_model_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="model-id"
+            android:textSize="12sp"
+            android:textColor="#cccccc"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_model_category"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TEXT"
+        android:textSize="10sp"
+        android:textColor="#4caf50"
+        android:background="#e8f5e8"
+        android:padding="4dp"
+        android:layout_marginStart="8dp" />
+
+</LinearLayout>

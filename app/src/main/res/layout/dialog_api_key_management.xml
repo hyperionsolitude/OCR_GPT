@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#2c2c2c">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🔑 API Key Management"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"
+        android:background="#3c3c3c"
+        android:padding="12dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Manage multiple API keys for better rate limiting and reliability"
+        android:textSize="14sp"
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:background="#4c4c4c"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btn_add_api_key"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="➕ Add New API Key"
+        android:layout_marginBottom="16dp"
+        android:background="#2196f3"
+        android:textColor="#ffffff"
+        android:textStyle="bold"
+        android:textSize="16sp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="300dp"
+        android:background="#1c1c1c">
+
+        <LinearLayout
+            android:id="@+id/layout_api_keys"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp" />
+
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <Button
+            android:id="@+id/btn_reset_failed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔄 Reset Failed"
+            android:layout_marginEnd="4dp"
+            android:background="#ff9800"
+            android:textColor="#ffffff"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_test_keys"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🧪 Test All Keys"
+            android:layout_marginStart="4dp"
+            android:background="#9c27b0"
+            android:textColor="#ffffff"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="💡 Tip: Add multiple keys to avoid rate limits"
+        android:textSize="14sp"
+        android:textColor="#ffffff"
+        android:background="#3c3c3c"
+        android:padding="8dp"
+        android:layout_marginTop="12dp"
+        android:gravity="center" />
+
+</LinearLayout>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#2c2c2c">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🤖 Select AI Models"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#ffffff"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"
+        android:background="#3c3c3c"
+        android:padding="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="12dp">
+
+        <Button
+            android:id="@+id/btn_select_all"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="✅ Select All"
+            android:layout_marginEnd="4dp"
+            android:background="#4caf50"
+            android:textColor="#ffffff"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_deselect_all"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="❌ Deselect All"
+            android:layout_marginStart="4dp"
+            android:background="#f44336"
+            android:textColor="#ffffff"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_selected_count"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Selected: 0 models"
+        android:textSize="16sp"
+        android:textColor="#ffffff"
+        android:textStyle="bold"
+        android:background="#4c4c4c"
+        android:padding="8dp"
+        android:gravity="center"
+        android:layout_marginBottom="12dp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="400dp"
+        android:background="#1c1c1c">
+
+        <LinearLayout
+            android:id="@+id/layout_models"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp" />
+
+    </ScrollView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="💡 Tip: Select multiple models to compare responses"
+        android:textSize="14sp"
+        android:textColor="#ffffff"
+        android:background="#3c3c3c"
+        android:padding="8dp"
+        android:layout_marginTop="12dp"
+        android:gravity="center" />
+
+</LinearLayout>
