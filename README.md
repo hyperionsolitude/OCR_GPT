@@ -79,27 +79,45 @@ A powerful Android application that combines Optical Character Recognition (OCR)
 ## Project Structure
 
 ```
-android/
+OCR_GPT_Android_Project/
 ├── app/
 │   ├── src/main/
 │   │   ├── java/com/ocrgpt/
-│   │   │   ├── MainActivity.kt          # Main app logic
-│   │   │   ├── CustomCropActivity.kt    # Image cropping
-│   │   │   └── ReviewImageActivity.kt   # Image review
+│   │   │   ├── MainActivity.kt                 # Main UI & app flow
+│   │   │   ├── ApiKeyManager.kt                # Multi‑key storage, rotation, failover
+│   │   │   ├── ModelManager.kt                 # Dynamic model fetch/filter/selection
+│   │   │   ├── CustomCropActivity.kt           # Image cropping
+│   │   │   └── ReviewImageActivity.kt          # Image review
 │   │   ├── res/
-│   │   │   ├── layout/                  # UI layouts
-│   │   │   ├── values/                  # App resources
-│   │   │   └── drawable/                # Images and icons
+│   │   │   ├── layout/
+│   │   │   │   ├── activity_main.xml           # Main screen
+│   │   │   │   ├── dialog_model_selection.xml  # Models multi‑select dialog (dark theme)
+│   │   │   │   ├── dialog_api_key_management.xml # API keys management (dark theme)
+│   │   │   │   ├── item_api_key.xml            # API key item in dialog
+│   │   │   │   └── item_model.xml              # Model item in dialog
+│   │   │   ├── values/                         # Strings, styles, colors, etc.
+│   │   │   └── drawable/                       # Images and icons
 │   │   └── AndroidManifest.xml
-│   └── build.gradle                     # App dependencies
+│   └── build.gradle                            # App module Gradle config
 ├── gradle/
-│   └── wrapper/                         # Gradle wrapper files
-├── build.gradle                         # Project configuration
-├── gradle.properties                    # Gradle settings
-├── settings.gradle                      # Project settings
-├── gradlew                              # Gradle wrapper script
-└── local.properties                     # SDK path (update this)
+│   └── wrapper/                                # Gradle wrapper files
+├── build.gradle                                # Root Gradle config
+├── gradle.properties                           # Gradle settings
+├── settings.gradle                             # Project settings
+├── README.md                                   # This file
+├── QUICK_START.md                              # Quick setup and usage
+├── build.sh                                    # Helper build script
+├── setup.sh                                    # Project setup helper
+├── .gitignore                                  # Ignored files (includes local.properties, build)
+├── gradlew                                     # Gradle wrapper script (Linux/Mac)
+├── gradlew.bat                                 # Gradle wrapper script (Windows)
+└── local.properties                            # SDK path (user‑specific; ignored)
 ```
+
+Key modules:
+- `ApiKeyManager.kt`: Stores multiple API keys in `SharedPreferences`, rotates keys, tracks usage/failures.
+- `ModelManager.kt`: Fetches Groq models at runtime, filters to text models, persists selections.
+- `dialog_model_selection.xml` / `dialog_api_key_management.xml`: Dark‑themed management dialogs.
 
 ## Dependencies
 
