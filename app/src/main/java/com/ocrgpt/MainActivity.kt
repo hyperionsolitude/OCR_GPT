@@ -1296,7 +1296,7 @@ class MainActivity : AppCompatActivity() {
                                 
                                 // Build the full prompt (matching original Python app)
                                 val rules = """
-Please answer the following question. Provide a compact step-by-step solution or reasoning, but for the final answer, use the format 'a = <answer>' (e.g., a = 5). Do not use verbose explanations, boxed math, or LaTeX for the answer. Only provide the answer in the specified format at the end.
+Please answer the following question in English. Provide a compact step-by-step solution or reasoning, but for the final answer, use the format 'a = <answer>' (e.g., a = 5). Do not use verbose explanations, boxed math, or LaTeX for the answer. Only provide the answer in the specified format at the end.
 After giving the answer, if possible, provide the Python code that solves the problem, formatted as a code block.
 """.trimIndent()
                                 
@@ -1354,8 +1354,8 @@ After giving the answer, if possible, provide the Python code that solves the pr
                 // In OCR mode, use the prompt as-is (already formatted with rules)
                 promptFromUI
             } else {
-                // In text-only mode, send the user's text directly
-                promptFromUI
+                // In text-only mode, add language instruction
+                "Please respond in English: $promptFromUI"
             }
             
             // Note: We'll add the user message to conversation history AFTER getting AI response
@@ -1562,10 +1562,10 @@ After giving the answer, if possible, provide the Python code that solves the pr
             // Build messages array with conversation context
             val messagesArray = JSONArray()
             
-            // Add system message for automatic language detection and matching
+            // Add system message to ensure English responses unless specifically requested otherwise
             messagesArray.put(JSONObject().apply {
                 put("role", "system")
-                put("content", "You are a helpful AI assistant. Please automatically detect the language of the user's input and respond in the same language. If the input is in Arabic, respond in Arabic. If it's in English, respond in English. If it's in any other language, respond in that language. Always match the input language for the best user experience.")
+                put("content", "You are a helpful AI assistant. Please respond in English by default. Only respond in Arabic or other languages if the user explicitly asks you to do so or if the question is specifically about Arabic language/culture. For all other queries, provide clear and helpful responses in English.")
             })
             
             if (isConversationMode && conversationHistory.isNotEmpty()) {
