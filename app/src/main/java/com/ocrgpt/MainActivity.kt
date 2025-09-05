@@ -100,6 +100,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     
+    // Progress indicator
+    private var progressDialog: AlertDialog? = null
+    
     // JavaScript interface for native Android functionality
     @Suppress("unused")
     inner class WebAppInterface {
@@ -1141,22 +1144,34 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun preprocessImageForOCR(originalBitmap: Bitmap): Bitmap {
-        // Resize if too large (MLKit works better with reasonable sizes)
-        val maxSize = 1024
-        val width = originalBitmap.width
-        val height = originalBitmap.height
-        
-        val resizedBitmap = if (width > maxSize || height > maxSize) {
-            val scale = maxSize.toFloat() / maxOf(width, height)
-            val newWidth = (width * scale).toInt()
-            val newHeight = (height * scale).toInt()
-            Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
-        } else {
-            originalBitmap
+        return try {
+            // Resize if too large (MLKit works better with reasonable sizes)
+            val maxSize = 1024
+            val width = originalBitmap.width
+            val height = originalBitmap.height
+            
+            val resizedBitmap = if (width > maxSize || height > maxSize) {
+                val scale = maxSize.toFloat() / maxOf(width, height)
+                val newWidth = (width * scale).toInt()
+                val newHeight = (height * scale).toInt()
+                Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+            } else {
+                originalBitmap
+            }
+            
+            // Enhance image for better OCR, especially for monitor captures
+            val enhancedBitmap = enhanceImageForOCR(resizedBitmap)
+            
+            // Clean up intermediate bitmap if we created one
+            if (width > maxSize || height > maxSize) {
+                resizedBitmap.recycle()
+            }
+            
+            enhancedBitmap
+        } catch (e: Exception) {
+            Log.e("OCR", "Error preprocessing image: ${e.message}", e)
+            originalBitmap // Return original if preprocessing fails
         }
-        
-        // Enhance image for better OCR, especially for monitor captures
-        return enhanceImageForOCR(resizedBitmap)
     }
 
     private fun enhanceImageForOCR(bitmap: Bitmap): Bitmap {
@@ -1274,6 +1289,7 @@ class MainActivity : AppCompatActivity() {
             Log.d("OCR", "Bitmap config: ${bitmap.config}")
             
             runOnUiThread {
+                showProgressIndicator("Extracting text from image...")
                 setWebViewContent(aiResponseWebView, "Processing OCR...")
                 Log.d("OCR", "Set UI to 'Processing OCR...'")
             }
@@ -1293,6 +1309,7 @@ class MainActivity : AppCompatActivity() {
                         Log.d("OCR", "Extracted text: '$extractedText'")
                         
                         runOnUiThread {
+                            hideProgressIndicator()
                             if (extractedText.isNotEmpty()) {
                                 Log.d("OCR", "Updating UI with extracted text")
                                 Log.d("OCR", "Text to set: '$extractedText'")
@@ -1307,12 +1324,14 @@ After giving the answer, if possible, provide the Python code that solves the pr
                                 promptEditText.setText(currentPrompt)
                                 updateButtonStates()
                                 
+                                Toast.makeText(this@MainActivity, "Text extracted successfully!", Toast.LENGTH_SHORT).show()
                                 Log.d("OCR", "UI updated with full prompt")
                                 Log.d("OCR", "Current prompt: '$currentPrompt'")
                             } else {
                                 Log.w("OCR", "No text found in image")
                                 promptEditText.setText("No text found in the image. Try:\n- Using a clearer image\n- Ensuring text is well-lit\n- Checking text orientation")
                                 updateButtonStates()
+                                Toast.makeText(this@MainActivity, "No text found in image", Toast.LENGTH_SHORT).show()
                                 Log.d("OCR", "Set 'no text found' message")
                             }
                         }
@@ -1320,15 +1339,19 @@ After giving the answer, if possible, provide the Python code that solves the pr
                     .addOnFailureListener { e ->
                         Log.e("OCR", "OCR failed: ${e.message}", e)
                         runOnUiThread {
+                            hideProgressIndicator()
                             setWebViewContent(aiResponseWebView, "OCR failed: ${e.message}\n\nPossible issues:\n- Check internet connection\n- Try a different image\n- Ensure image has clear text")
                             updateButtonStates()
+                            Toast.makeText(this@MainActivity, "OCR processing failed", Toast.LENGTH_SHORT).show()
                         }
                     }
             } catch (e: Exception) {
                 Log.e("OCR", "Error creating InputImage: ${e.message}", e)
                 runOnUiThread {
+                    hideProgressIndicator()
                     setWebViewContent(aiResponseWebView, "Error processing image: ${e.message}")
                     updateButtonStates()
+                    Toast.makeText(this@MainActivity, "Error processing image", Toast.LENGTH_SHORT).show()
                 }
             }
         } ?: run {
@@ -1381,6 +1404,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
     private fun processWithAI(prompt: String) {
         Log.d("OCR", "Starting AI processing with prompt: '$prompt'")
         runOnUiThread {
+            showProgressIndicator("Processing with AI...")
             setWebViewContent(aiResponseWebView, "Processing with AI...")
             Log.d("OCR", "Set AI UI to 'Processing with AI...'")
         }
@@ -1399,6 +1423,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
                 }
                 
                 withContext(Dispatchers.Main) {
+                    hideProgressIndicator()
                     Log.d("OCR", "Setting AI response in UI: '$response'")
                     setWebViewContent(aiResponseWebView, "AI Response:\n$response")
                     Log.d("OCR", "AI response updated in UI")
@@ -1407,7 +1432,9 @@ After giving the answer, if possible, provide the Python code that solves the pr
             } catch (e: Exception) {
                 Log.e("OCR", "AI processing failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
+                    hideProgressIndicator()
                     setWebViewContent(aiResponseWebView, "AI processing failed: ${e.message}")
+                    Toast.makeText(this@MainActivity, "AI processing failed", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1872,6 +1899,33 @@ After giving the answer, if possible, provide the Python code that solves the pr
         modelResponses.clear()
         isProcessingAllModels = false
         Log.d("OCR", "Cleared old data for new capture")
+    }
+    
+    private fun showProgressIndicator(message: String) {
+        hideProgressIndicator() // Hide any existing dialog
+        
+        progressDialog = AlertDialog.Builder(this)
+            .setTitle("Processing...")
+            .setMessage(message)
+            .setCancelable(false)
+            .create()
+        
+        progressDialog?.show()
+    }
+    
+    private fun hideProgressIndicator() {
+        progressDialog?.dismiss()
+        progressDialog = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clean up resources to prevent memory leaks
+        hideProgressIndicator()
+        currentBitmap?.recycle()
+        currentBitmap = null
+        modelResponses.clear()
+        conversationHistory.clear()
     }
 
     companion object {

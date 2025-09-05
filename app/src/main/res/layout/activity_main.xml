@@ -22,7 +22,8 @@
         android:textSize="24sp"
         android:textStyle="bold"
         android:gravity="center"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        android:contentDescription="OCR GPT - AI-powered text recognition and analysis app" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -38,6 +39,7 @@
             android:text="📷 OCR"
             android:layout_marginEnd="2dp"
             android:textSize="12sp"
+            android:contentDescription="Toggle between OCR mode and Chat mode"
             style="@style/Widget.AppCompat.Button.Colored" />
 
         <Button
@@ -49,6 +51,7 @@
             android:layout_marginStart="2dp"
             android:layout_marginEnd="2dp"
             android:textSize="12sp"
+            android:contentDescription="Start new conversation"
             style="@style/Widget.AppCompat.Button.Colored" />
 
         <Button
