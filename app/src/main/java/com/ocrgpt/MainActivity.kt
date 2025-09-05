@@ -999,9 +999,10 @@ class MainActivity : AppCompatActivity() {
             Log.d("OCR", "Created photo file: ${photoFile.absolutePath}")
             Log.d("OCR", "Photo URI: $currentPhotoUri")
             
-            // Try standard camera intent first
+            // Try standard camera intent first - explicitly set to back camera
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
@@ -1028,10 +1029,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun launchHarmonyOSCamera(photoFile: File) {
         try {
-            // Try to launch Huawei camera directly
+            // Try to launch Huawei camera directly - explicitly set to back camera
             val huaweiCameraIntent = Intent().apply {
                 setClassName("com.huawei.camera", "com.huawei.camera.ThirdCamera")
                 putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
@@ -1041,9 +1043,10 @@ class MainActivity : AppCompatActivity() {
             
         } catch (e: Exception) {
             Log.e("OCR", "Huawei camera launch failed", e)
-            // Fallback to standard intent anyway
+            // Fallback to standard intent anyway - explicitly set to back camera
             val fallbackIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
