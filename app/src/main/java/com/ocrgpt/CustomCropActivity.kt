@@ -2,6 +2,7 @@ package com.ocrgpt
 
 import android.app.Activity
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
@@ -50,6 +51,16 @@ class CustomCropActivity : AppCompatActivity() {
 
         loadImage()
         setupButtons()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        Log.d("CustomCrop", "Configuration changed: ${newConfig.orientation}")
+        
+        // Update the crop overlay when orientation changes
+        runOnUiThread {
+            cropOverlay.updateForOrientationChange()
+        }
     }
 
     private fun loadImage() {
@@ -311,19 +322,38 @@ class CropOverlayView @JvmOverloads constructor(
         this.imageView = imageView
         // Initialize crop rectangle to center of actual image area
         post {
-            val imageBounds = getImageBoundsInView()
-            val centerX = imageBounds.centerX()
-            val centerY = imageBounds.centerY()
-            val size = minOf(imageBounds.width(), imageBounds.height()) * 0.6f
-            cropRect.set(
-                centerX - size / 2,
-                centerY - size / 2,
-                centerX + size / 2,
-                centerY + size / 2
-            )
-            updateHandles()
-            invalidate()
+            initializeCropRectangle()
         }
+    }
+
+    private fun initializeCropRectangle() {
+        val imageBounds = getImageBoundsInView()
+        val centerX = imageBounds.centerX()
+        val centerY = imageBounds.centerY()
+        
+        // Make crop rectangle responsive to orientation
+        val availableWidth = imageBounds.width()
+        val availableHeight = imageBounds.height()
+        val minDimension = minOf(availableWidth, availableHeight)
+        
+        // Use 60% of the smaller dimension, but ensure minimum size
+        val size = maxOf(minDimension * 0.6f, 200f)
+        
+        cropRect.set(
+            centerX - size / 2,
+            centerY - size / 2,
+            centerX + size / 2,
+            centerY + size / 2
+        )
+        
+        // Ensure crop rectangle is within bounds
+        cropRect.left = cropRect.left.coerceIn(imageBounds.left, imageBounds.right - handleSize)
+        cropRect.top = cropRect.top.coerceIn(imageBounds.top, imageBounds.bottom - handleSize)
+        cropRect.right = cropRect.right.coerceIn(cropRect.left + handleSize, imageBounds.right)
+        cropRect.bottom = cropRect.bottom.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
+        
+        updateHandles()
+        invalidate()
     }
 
     private fun getImageBoundsInView(): RectF {
@@ -354,6 +384,51 @@ class CropOverlayView @JvmOverloads constructor(
 
     fun getCropRect(): RectF {
         return RectF(cropRect)
+    }
+
+    fun updateForOrientationChange() {
+        // Recalculate crop rectangle position when orientation changes
+        post {
+            val imageBounds = getImageBoundsInView()
+            val currentCropRect = RectF(cropRect)
+            
+            // Only update if we have valid image bounds
+            if (imageBounds.width() > 0 && imageBounds.height() > 0) {
+                // Calculate the relative position within the image bounds
+                val relativeLeft = (currentCropRect.left - imageBounds.left) / imageBounds.width()
+                val relativeTop = (currentCropRect.top - imageBounds.top) / imageBounds.height()
+                val relativeRight = (currentCropRect.right - imageBounds.left) / imageBounds.width()
+                val relativeBottom = (currentCropRect.bottom - imageBounds.top) / imageBounds.height()
+                
+                // Apply the relative positions to the new image bounds
+                val newLeft = imageBounds.left + relativeLeft * imageBounds.width()
+                val newTop = imageBounds.top + relativeTop * imageBounds.height()
+                val newRight = imageBounds.left + relativeRight * imageBounds.width()
+                val newBottom = imageBounds.top + relativeBottom * imageBounds.height()
+                
+                // Ensure the crop rectangle stays within bounds
+                cropRect.set(
+                    newLeft.coerceIn(imageBounds.left, imageBounds.right - handleSize),
+                    newTop.coerceIn(imageBounds.top, imageBounds.bottom - handleSize),
+                    newRight.coerceIn(imageBounds.left + handleSize, imageBounds.right),
+                    newBottom.coerceIn(imageBounds.top + handleSize, imageBounds.bottom)
+                )
+                
+                updateHandles()
+                invalidate()
+            } else {
+                // If bounds are not ready, reinitialize the crop rectangle
+                initializeCropRectangle()
+            }
+        }
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // Update crop rectangle when view size changes (e.g., during orientation change)
+        post {
+            updateForOrientationChange()
+        }
     }
 
     private fun updateHandles() {

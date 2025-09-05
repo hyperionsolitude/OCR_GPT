@@ -22,6 +22,7 @@ import android.content.ClipboardManager
 import android.content.ClipData
 import android.webkit.WebView
 import android.webkit.WebSettings
+import android.webkit.JavascriptInterface
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -98,6 +99,30 @@ class MainActivity : AppCompatActivity() {
     // Activity Result Launchers
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
+    
+    // JavaScript interface for native Android functionality
+    @Suppress("unused")
+    inner class WebAppInterface {
+        @JavascriptInterface
+        fun copyToClipboard(text: String) {
+            Log.d("OCR", "copyToClipboard called with text length: ${text.length}")
+            runOnUiThread {
+                try {
+                    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Code", text)
+                    clipboard.setPrimaryClip(clip)
+                    
+                    // Show toast message
+                    Toast.makeText(this@MainActivity, "Code copied to clipboard! (${text.length} chars)", Toast.LENGTH_SHORT).show()
+                    Log.d("OCR", "Successfully copied ${text.length} characters to clipboard")
+                } catch (e: Exception) {
+                    Log.e("OCR", "Failed to copy to clipboard: ${e.message}", e)
+                    Toast.makeText(this@MainActivity, "Failed to copy to clipboard: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
     private lateinit var cropLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
 
@@ -708,7 +733,12 @@ class MainActivity : AppCompatActivity() {
             useWideViewPort = true
             builtInZoomControls = true
             displayZoomControls = false
+            allowFileAccess = true
+            allowContentAccess = true
         }
+        
+        // Add JavaScript interface for native copy functionality
+        aiResponseWebView.addJavascriptInterface(WebAppInterface(), "Android")
         
         // Set initial content
         setWebViewContent(aiResponseWebView, "No AI response yet...")
@@ -719,6 +749,9 @@ class MainActivity : AppCompatActivity() {
         if (webView == aiResponseWebView) {
             currentPromptText = content
         }
+        
+        // Process content to add copy buttons to code blocks
+        val processedContent = addCopyButtonsToCodeBlocks(content)
         
         val htmlContent = """
             <!DOCTYPE html>
@@ -735,6 +768,10 @@ class MainActivity : AppCompatActivity() {
                         padding: 12px;
                         margin: 0;
                     }
+                    .code-container {
+                        position: relative;
+                        margin: 8px 0;
+                    }
                     pre {
                         background-color: #f8f8f8;
                         border: 1px solid #ddd;
@@ -742,6 +779,31 @@ class MainActivity : AppCompatActivity() {
                         padding: 8px;
                         overflow-x: auto;
                         font-family: 'Courier New', monospace;
+                        margin: 0;
+                    }
+                    .copy-button {
+                        position: absolute;
+                        top: 8px;
+                        right: 8px;
+                        background-color: #4CAF50;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 6px 12px;
+                        font-size: 12px;
+                        cursor: pointer;
+                        z-index: 10;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        transition: background-color 0.3s;
+                    }
+                    .copy-button:hover {
+                        background-color: #45a049;
+                    }
+                    .copy-button:active {
+                        background-color: #3d8b40;
+                    }
+                    .copy-button.copied {
+                        background-color: #2196F3;
                     }
                     code {
                         background-color: #f1f1f1;
@@ -766,12 +828,121 @@ class MainActivity : AppCompatActivity() {
                 </style>
             </head>
             <body>
-                ${content.replace("\n", "<br>").replace("```", "<pre>").replace("```", "</pre>")}
+                $processedContent
+                <script>
+                    function copyCodeToClipboard(button, codeText) {
+                        // Clean the code text
+                        const cleanCodeText = codeText.replace(/\\`/g, '`').replace(/\\"/g, '"');
+                        
+                        try {
+                            // Check if Android interface is available
+                            if (window.Android && typeof window.Android.copyToClipboard === 'function') {
+                                // Use native Android copy functionality
+                                window.Android.copyToClipboard(cleanCodeText);
+                                showCopySuccess(button);
+                            } else {
+                                // Fallback to WebView clipboard API
+                                fallbackCopy(button, cleanCodeText);
+                            }
+                        } catch (err) {
+                            console.error('Failed to copy text: ', err);
+                            showCopyError(button);
+                        }
+                    }
+                    
+                    function fallbackCopy(button, codeText) {
+                        try {
+                            // Create a temporary textarea element
+                            const textarea = document.createElement('textarea');
+                            textarea.value = codeText;
+                            textarea.style.position = 'fixed';
+                            textarea.style.left = '-999999px';
+                            textarea.style.top = '-999999px';
+                            document.body.appendChild(textarea);
+                            
+                            // Focus and select the text
+                            textarea.focus();
+                            textarea.select();
+                            
+                            // Try execCommand
+                            const successful = document.execCommand('copy');
+                            
+                            // Remove the temporary textarea
+                            document.body.removeChild(textarea);
+                            
+                            if (successful) {
+                                showCopySuccess(button);
+                            } else {
+                                showCopyError(button);
+                            }
+                        } catch (err) {
+                            showCopyError(button);
+                        }
+                    }
+                    
+                    function showCopySuccess(button) {
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied!';
+                        button.classList.add('copied');
+                        
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.classList.remove('copied');
+                        }, 2000);
+                    }
+                    
+                    function showCopyError(button) {
+                        const originalText = button.textContent;
+                        button.textContent = 'Failed';
+                        button.style.backgroundColor = '#f44336';
+                        
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.style.backgroundColor = '#4CAF50';
+                        }, 2000);
+                    }
+                </script>
             </body>
             </html>
         """.trimIndent()
         
         webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+    }
+
+    private fun addCopyButtonsToCodeBlocks(content: String): String {
+        // First convert markdown code blocks to HTML with copy buttons
+        val codeBlockRegex = Regex("```([\\s\\S]*?)```")
+        var processedContent = content
+        
+        // Process markdown code blocks first
+        codeBlockRegex.findAll(content).forEachIndexed { index, matchResult ->
+            val codeContent = matchResult.groupValues[1].trim()
+            
+            val codeBlockHtml = """
+                <div class="code-container">
+                    <button class="copy-button" onclick="copyCodeToClipboard(this, `${escapeForJavaScript(codeContent)}`)">Copy</button>
+                    <pre><code>$codeContent</code></pre>
+                </div>
+            """.trimIndent()
+            
+            processedContent = processedContent.replace(matchResult.value, codeBlockHtml)
+        }
+        
+        // Convert line breaks to HTML (but only for non-code content)
+        processedContent = processedContent.replace("\n", "<br>")
+        
+        return processedContent
+    }
+
+    private fun escapeForJavaScript(text: String): String {
+        return text
+            .replace("\\", "\\\\")
+            .replace("`", "\\`")
+            .replace("\"", "\\\"")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
     }
 
     private fun getWebViewText(webView: WebView): String {
