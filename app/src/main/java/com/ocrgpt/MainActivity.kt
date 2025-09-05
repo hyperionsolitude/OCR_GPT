@@ -830,9 +830,21 @@ class MainActivity : AppCompatActivity() {
             <body>
                 $processedContent
                 <script>
-                    function copyCodeToClipboard(button, codeText) {
-                        // Clean the code text
-                        const cleanCodeText = codeText.replace(/\\`/g, '`').replace(/\\"/g, '"');
+                    function copyCodeToClipboard(button) {
+                        // Get the code from the data attribute
+                        const codeText = button.getAttribute('data-code');
+                        
+                        if (!codeText) {
+                            showCopyError(button);
+                            return;
+                        }
+                        
+                        // Decode HTML entities
+                        const cleanCodeText = codeText
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#10;/g, '\\n')
+                            .replace(/&#13;/g, '\\r')
+                            .replace(/&#9;/g, '\\t');
                         
                         try {
                             // Check if Android interface is available
@@ -845,7 +857,6 @@ class MainActivity : AppCompatActivity() {
                                 fallbackCopy(button, cleanCodeText);
                             }
                         } catch (err) {
-                            console.error('Failed to copy text: ', err);
                             showCopyError(button);
                         }
                     }
@@ -901,6 +912,7 @@ class MainActivity : AppCompatActivity() {
                             button.style.backgroundColor = '#4CAF50';
                         }, 2000);
                     }
+                    
                 </script>
             </body>
             </html>
@@ -912,26 +924,36 @@ class MainActivity : AppCompatActivity() {
     private fun addCopyButtonsToCodeBlocks(content: String): String {
         // First convert markdown code blocks to HTML with copy buttons
         val codeBlockRegex = Regex("```([\\s\\S]*?)```")
-        var processedContent = content
         
-        // Process markdown code blocks first
-        codeBlockRegex.findAll(content).forEachIndexed { index, matchResult ->
+        // Find all matches
+        val allMatches = codeBlockRegex.findAll(content).toList()
+        
+        if (allMatches.isEmpty()) {
+            return content.replace("\n", "<br>")
+        }
+        
+        // Process each code block individually to ensure all are replaced
+        var processedContent = content
+        var codeBlockCounter = 0
+        
+        // Process in reverse order to avoid index shifting issues
+        allMatches.reversed().forEach { matchResult ->
             val codeContent = matchResult.groupValues[1].trim()
+            val uniqueId = "code-block-${codeBlockCounter++}-${System.currentTimeMillis()}-${(Math.random() * 1000).toInt()}"
             
             val codeBlockHtml = """
-                <div class="code-container">
-                    <button class="copy-button" onclick="copyCodeToClipboard(this, `${escapeForJavaScript(codeContent)}`)">Copy</button>
+                <div class="code-container" id="$uniqueId">
+                    <button class="copy-button" data-code="${codeContent.replace("\"", "&quot;").replace("\n", "&#10;").replace("\r", "&#13;").replace("\t", "&#9;")}" onclick="copyCodeToClipboard(this)">Copy</button>
                     <pre><code>$codeContent</code></pre>
                 </div>
             """.trimIndent()
             
+            // Replace this specific match
             processedContent = processedContent.replace(matchResult.value, codeBlockHtml)
         }
         
         // Convert line breaks to HTML (but only for non-code content)
-        processedContent = processedContent.replace("\n", "<br>")
-        
-        return processedContent
+        return processedContent.replace("\n", "<br>")
     }
 
     private fun escapeForJavaScript(text: String): String {
@@ -1492,6 +1514,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
             responseBuilder.append("---\n\n")
         }
         
+        Log.d("OCR", "Displaying all models response with ${selectedModels.size} models")
         setWebViewContent(aiResponseWebView, responseBuilder.toString())
     }
 
