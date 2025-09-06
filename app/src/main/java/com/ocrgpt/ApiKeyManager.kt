@@ -12,49 +12,51 @@ data class ApiKeyInfo(
     val name: String,
     val isActive: Boolean = true,
     val usageCount: Int = 0,
-    val lastUsed: Long = System.currentTimeMillis()
+    val lastUsed: Long = System.currentTimeMillis(),
 )
 
-class ApiKeyManager(private val context: Context) {
-    private val sharedPreferences: SharedPreferences = 
+class ApiKeyManager(
+    private val context: Context,
+) {
+    private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("api_keys_prefs", Context.MODE_PRIVATE)
-    
+
     private val apiKeys = mutableListOf<ApiKeyInfo>()
     private val currentKeyIndex = AtomicInteger(0)
     private val mutex = Mutex()
-    
+
     companion object {
         private const val TAG = "ApiKeyManager"
         private const val MAX_KEYS = 5
         private const val KEY_PREFIX = "api_key_"
         private const val KEY_COUNT = "key_count"
     }
-    
+
     init {
         loadApiKeys()
     }
-    
+
     private fun loadApiKeys() {
         val keyCount = sharedPreferences.getInt(KEY_COUNT, 0)
         apiKeys.clear()
-        
+
         for (i in 0 until keyCount) {
             val key = sharedPreferences.getString("${KEY_PREFIX}${i}_key", null) ?: continue
             val name = sharedPreferences.getString("${KEY_PREFIX}${i}_name", "API Key ${i + 1}") ?: "API Key ${i + 1}"
             val isActive = sharedPreferences.getBoolean("${KEY_PREFIX}${i}_active", true)
             val usageCount = sharedPreferences.getInt("${KEY_PREFIX}${i}_usage", 0)
             val lastUsed = sharedPreferences.getLong("${KEY_PREFIX}${i}_last_used", System.currentTimeMillis())
-            
+
             apiKeys.add(ApiKeyInfo(key, name, isActive, usageCount, lastUsed))
         }
-        
+
         Log.d(TAG, "Loaded ${apiKeys.size} API keys")
     }
-    
+
     private fun saveApiKeys() {
         val editor = sharedPreferences.edit()
         editor.putInt(KEY_COUNT, apiKeys.size)
-        
+
         apiKeys.forEachIndexed { index, apiKey ->
             editor.putString("${KEY_PREFIX}${index}_key", apiKey.key)
             editor.putString("${KEY_PREFIX}${index}_name", apiKey.name)
