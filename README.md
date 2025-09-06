@@ -1,5 +1,10 @@
 # OCR GPT Android App
 
+[![Android CI](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/android-ci.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/android-ci.yml)
+[![Code Quality](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/code-quality.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/code-quality.yml)
+[![Dependency Review](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/dependency-review.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A powerful, optimized Android application that combines Optical Character Recognition (OCR) with AI-powered question answering and conversational capabilities. Built with modern Android development practices and optimized for performance.
 
 ## ✨ Features
@@ -226,7 +231,28 @@ Permissions are requested at runtime when needed.
 
 ## 📄 License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🔄 CI/CD & Automation
+
+This project includes comprehensive GitHub Actions workflows for:
+
+### **Automated Testing & Building**
+- **Android CI**: Automated testing, linting, and APK building on every push/PR
+- **Code Quality**: Ktlint and Detekt code quality checks
+- **Dependency Review**: Security scanning for dependencies
+- **Release Automation**: Automated releases with APK signing
+
+### **Quality Assurance**
+- **Lint Checks**: Android lint with custom rules
+- **Code Style**: Ktlint for Kotlin code formatting
+- **Static Analysis**: Detekt for code quality and complexity analysis
+- **Security Scanning**: CodeQL for vulnerability detection
+
+### **Build Artifacts**
+- Debug and Release APKs are automatically built and uploaded as artifacts
+- Test reports and lint results are available for download
+- Automated release creation with signed APKs
 
 ## 🤝 Contributing
 
