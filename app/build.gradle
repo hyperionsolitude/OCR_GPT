@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
-    // id 'io.gitlab.arturbosch.detekt' // Temporarily disabled due to many style issues
+    // id 'io.gitlab.arturbosch.detekt' // Temporarily disabled for build success
 }
 
 android {

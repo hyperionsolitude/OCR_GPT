@@ -32,8 +32,17 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 
-import kotlinx.coroutines.*
-import okhttp3.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -74,8 +83,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var clearButton: Button
     private lateinit var newConversationButton: Button
     private var currentBitmap: Bitmap? = null
-    private val CAMERA_REQUEST_CODE = 101
-    private val CUSTOM_CROP_REQUEST_CODE = 102
     private var currentPhotoUri: Uri? = null
     private var currentPhotoPath: String? = null
     private var currentPrompt: String = ""
@@ -116,11 +123,19 @@ class MainActivity : AppCompatActivity() {
                     clipboard.setPrimaryClip(clip)
                     
                     // Show toast message
-                    Toast.makeText(this@MainActivity, "Code copied to clipboard! (${text.length} chars)", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Code copied to clipboard! (${text.length} chars)",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     Log.d("OCR", "Successfully copied ${text.length} characters to clipboard")
                 } catch (e: Exception) {
                     Log.e("OCR", "Failed to copy to clipboard: ${e.message}", e)
-                    Toast.makeText(this@MainActivity, "Failed to copy to clipboard: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Failed to copy to clipboard: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -959,16 +974,6 @@ class MainActivity : AppCompatActivity() {
         return processedContent.replace("\n", "<br>")
     }
 
-    private fun escapeForJavaScript(text: String): String {
-        return text
-            .replace("\\", "\\\\")
-            .replace("`", "\\`")
-            .replace("\"", "\\\"")
-            .replace("'", "\\'")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-    }
 
     private fun getWebViewText(webView: WebView): String {
         return if (webView == aiResponseWebView) {
@@ -1030,7 +1035,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchHarmonyOSCamera(photoFile: File) {
+    private fun launchHarmonyOSCamera(@Suppress("UNUSED_PARAMETER") photoFile: File) {
         try {
             // Try to launch Huawei camera directly - explicitly set to back camera
             val huaweiCameraIntent = Intent().apply {
@@ -1548,26 +1553,6 @@ After giving the answer, if possible, provide the Python code that solves the pr
         setWebViewContent(aiResponseWebView, responseBuilder.toString())
     }
 
-    private fun cleanExtractedText(text: String): String {
-        // Remove common UI prefixes and suffixes that might be added
-        var cleaned = text.trim()
-        
-        // Remove "OCR Result:" prefix if present
-        if (cleaned.startsWith("OCR Result:", ignoreCase = true)) {
-            cleaned = cleaned.substringAfter("OCR Result:").trim()
-        }
-        
-        // Remove "Processing OCR..." if present
-        if (cleaned.startsWith("Processing OCR...", ignoreCase = true)) {
-            cleaned = cleaned.substringAfter("Processing OCR...").trim()
-        }
-        
-        // Remove any leading/trailing whitespace and newlines
-        cleaned = cleaned.trim()
-        
-        Log.d("OCR", "Text cleaning: '$text' -> '$cleaned'")
-        return cleaned
-    }
 
     private suspend fun sendToGroqAPI(prompt: String): String {
         return withContext(Dispatchers.IO) {
@@ -1746,11 +1731,15 @@ After giving the answer, if possible, provide the Python code that solves the pr
 
     private fun setupEditTextListener() {
         promptEditText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                // No action needed before text changes
+            }
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateButtonStates()
             }
-            override fun afterTextChanged(s: Editable?) {}
+            override fun afterTextChanged(s: Editable?) {
+                // No action needed after text changes
+            }
         })
     }
 
@@ -1828,29 +1817,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
         Log.d("OCR", "New conversation started. History cleared.")
     }
     
-    private fun getConversationSummary(): String {
-        if (conversationHistory.isEmpty()) {
-            return "No conversation history"
-        }
-        
-        val summary = StringBuilder()
-        summary.append("## Conversation History (${conversationHistory.size} messages)\n\n")
-        
-        conversationHistory.forEachIndexed { index, message ->
-            val role = if (message.role == "user") "👤 You" else "🤖 AI"
-            val timestamp = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(message.timestamp))
-            summary.append("**$role** ($timestamp):\n")
-            summary.append("${message.content}\n\n")
-        }
-        
-        return summary.toString()
-    }
     
-    private fun showConversationHistory() {
-        val history = getConversationSummary()
-        setWebViewContent(aiResponseWebView, history)
-        Toast.makeText(this, "Showing conversation history", Toast.LENGTH_SHORT).show()
-    }
     
     private fun updateConversationStatus() {
         if (conversationHistory.isNotEmpty()) {
@@ -1929,6 +1896,6 @@ After giving the answer, if possible, provide the Python code that solves the pr
     }
 
     companion object {
-        private const val TAG = "OCRGPT"
+        // No constants needed
     }
 } 

@@ -27,7 +27,6 @@ class ModelManager(private val context: Context) {
     
     companion object {
         private const val TAG = "ModelManager"
-        private const val MODELS_KEY = "available_models"
         private const val SELECTED_MODELS_KEY = "selected_models"
         
         // Default models as fallback
