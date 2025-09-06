@@ -2,9 +2,9 @@ name: Code Quality
 
 on:
   push:
-    branches: [ main, android, develop ]
+    branches: [ android, develop ]
   pull_request:
-    branches: [ main, android, develop ]
+    branches: [ android, develop ]
 
 jobs:
   ktlint:
