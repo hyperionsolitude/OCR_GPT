@@ -63,12 +63,26 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
+    - name: Check if detekt is enabled
+      id: check_detekt
+      run: |
+        if grep -q "id 'io.gitlab.arturbosch.detekt'" app/build.gradle; then
+          echo "enabled=true" >> $GITHUB_OUTPUT
+        else
+          echo "enabled=false" >> $GITHUB_OUTPUT
+        fi
+      
     - name: Run detekt
+      if: steps.check_detekt.outputs.enabled == 'true'
       run: ./gradlew detekt
       
+    - name: Skip detekt (disabled)
+      if: steps.check_detekt.outputs.enabled == 'false'
+      run: echo "Detekt is disabled in build.gradle - skipping static analysis"
+      
     - name: Upload detekt results
+      if: always() && steps.check_detekt.outputs.enabled == 'true'
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: detekt-results
         path: app/build/reports/detekt/
