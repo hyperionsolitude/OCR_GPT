@@ -112,8 +112,13 @@ class CustomCropActivity : AppCompatActivity() {
     private fun fixImageOrientation(bitmap: Bitmap): Bitmap {
         try {
             val inputStream = contentResolver.openInputStream(imageUri!!)
-            val exif = android.media.ExifInterface(inputStream!!)
-            inputStream.close()
+            val exif = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                android.media.ExifInterface(inputStream!!)
+            } else {
+                @Suppress("DEPRECATION")
+                android.media.ExifInterface(imageUri!!.path!!)
+            }
+            inputStream?.close()
             
             val orientation = exif.getAttributeInt(
                 android.media.ExifInterface.TAG_ORIENTATION,
@@ -455,7 +460,12 @@ class CropOverlayView @JvmOverloads constructor(
 
         // Clear the crop area
         canvas.save()
-        canvas.clipOutRect(cropRect)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            canvas.clipOutRect(cropRect)
+        } else {
+            @Suppress("DEPRECATION")
+            canvas.clipRect(cropRect, android.graphics.Region.Op.DIFFERENCE)
+        }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
         canvas.restore()
 

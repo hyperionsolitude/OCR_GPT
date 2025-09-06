@@ -64,23 +64,26 @@ class ApiKeyManager(
             editor.putInt("${KEY_PREFIX}${index}_usage", apiKey.usageCount)
             editor.putLong("${KEY_PREFIX}${index}_last_used", apiKey.lastUsed)
         }
-        
+
         editor.apply()
         Log.d(TAG, "Saved ${apiKeys.size} API keys")
     }
-    
-    suspend fun addApiKey(key: String, name: String): Boolean {
+
+    suspend fun addApiKey(
+        key: String,
+        name: String,
+    ): Boolean {
         return mutex.withLock {
             if (apiKeys.size >= MAX_KEYS) {
                 Log.w(TAG, "Maximum number of API keys reached")
                 return@withLock false
             }
-            
+
             if (apiKeys.any { it.key == key }) {
                 Log.w(TAG, "API key already exists")
                 return@withLock false
             }
-            
+
             val newApiKey = ApiKeyInfo(key, name)
             apiKeys.add(newApiKey)
             saveApiKeys()
@@ -88,7 +91,7 @@ class ApiKeyManager(
             true
         }
     }
-    
+
     suspend fun removeApiKey(index: Int): Boolean {
         return mutex.withLock {
             if (index < 0 || index >= apiKeys.size) {
