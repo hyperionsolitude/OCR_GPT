@@ -6,9 +6,11 @@
     <string name="process_ocr">Process OCR</string>
     <string name="extracted_text">Extracted Text:</string>
     <string name="ai_response">AI Response:</string>
-    <string name="no_text_extracted">No text extracted yet...</string>
-    <string name="no_ai_response">No AI response yet...</string>
-    <string name="processing">Processing...</string>
+    <string name="no_text_extracted">No text extracted yet&#8230;</string>
+    <string name="no_ai_response">No AI response yet&#8230;</string>
+    <string name="processing">Processing&#8230;</string>
+    <string name="image_preview_desc">Image preview</string>
+    <string name="review_image_desc">Cropped image preview</string>
     <string name="error_processing">Error processing image</string>
     <string name="camera_permission_required">Camera permission is required</string>
 </resources> 

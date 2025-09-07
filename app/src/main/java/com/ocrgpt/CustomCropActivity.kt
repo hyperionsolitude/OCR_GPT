@@ -140,33 +140,36 @@ class CustomCropActivity : AppCompatActivity() {
             val inputStream = contentResolver.openInputStream(imageUri!!)
             val exif =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    android.media.ExifInterface(inputStream!!)
+                    androidx.exifinterface.media.ExifInterface(inputStream!!)
                 } else {
                     @Suppress("DEPRECATION")
-                    android.media.ExifInterface(imageUri!!.path!!)
+                    androidx.exifinterface.media.ExifInterface(imageUri!!.path!!)
                 }
             inputStream?.close()
 
             val orientation =
                 exif.getAttributeInt(
-                    android.media.ExifInterface.TAG_ORIENTATION,
-                    android.media.ExifInterface.ORIENTATION_NORMAL,
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL,
                 )
 
             val matrix = Matrix()
             when (orientation) {
-                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(ROTATION_90_DEGREES)
-                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(ROTATION_180_DEGREES)
-                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(ROTATION_270_DEGREES)
-                android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL ->
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 ->
+                    matrix.postRotate(ROTATION_90_DEGREES)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 ->
+                    matrix.postRotate(ROTATION_180_DEGREES)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 ->
+                    matrix.postRotate(ROTATION_270_DEGREES)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL ->
                     matrix.postScale(SCALE_FLIP_HORIZONTAL, SCALE_NORMAL)
-                android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL ->
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_VERTICAL ->
                     matrix.postScale(SCALE_NORMAL, SCALE_FLIP_VERTICAL)
-                android.media.ExifInterface.ORIENTATION_TRANSPOSE -> {
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSPOSE -> {
                     matrix.postRotate(ROTATION_90_DEGREES)
                     matrix.postScale(SCALE_FLIP_HORIZONTAL, SCALE_NORMAL)
                 }
-                android.media.ExifInterface.ORIENTATION_TRANSVERSE -> {
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSVERSE -> {
                     matrix.postRotate(ROTATION_270_DEGREES)
                     matrix.postScale(SCALE_FLIP_HORIZONTAL, SCALE_NORMAL)
                 }

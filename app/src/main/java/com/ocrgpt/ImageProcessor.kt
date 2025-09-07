@@ -60,21 +60,22 @@ class ImageProcessor(
         imagePath: String,
     ): Bitmap {
         return try {
-            val exif = android.media.ExifInterface(imagePath)
+            val exif = androidx.exifinterface.media.ExifInterface(imagePath)
             val orientation =
                 exif.getAttributeInt(
-                    android.media.ExifInterface.TAG_ORIENTATION,
-                    android.media.ExifInterface.ORIENTATION_UNDEFINED,
+                    androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                    androidx.exifinterface.media.ExifInterface.ORIENTATION_UNDEFINED,
                 )
 
             val matrix = Matrix()
             when (orientation) {
-                android.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(ROTATION_90)
-                android.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(ROTATION_180)
-                android.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(ROTATION_270)
-                android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL ->
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(ROTATION_90)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(ROTATION_180)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(ROTATION_270)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL ->
                     matrix.postScale(FLIP_HORIZONTAL, NORMAL_SCALE)
-                android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(NORMAL_SCALE, FLIP_VERTICAL)
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_FLIP_VERTICAL ->
+                    matrix.postScale(NORMAL_SCALE, FLIP_VERTICAL)
                 else -> return bitmap
             }
 
