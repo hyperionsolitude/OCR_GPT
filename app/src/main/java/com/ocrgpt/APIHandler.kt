@@ -25,19 +25,10 @@ class APIHandler {
     }
 
     private val client = OkHttpClient.Builder()
-            .connectTimeout(
-                CONNECT_TIMEOUT_SECONDS,
-                java.util.concurrent.TimeUnit.SECONDS,
-            )
-            .readTimeout(
-                READ_TIMEOUT_SECONDS,
-                java.util.concurrent.TimeUnit.SECONDS,
-            )
-            .writeTimeout(
-                WRITE_TIMEOUT_SECONDS,
-                java.util.concurrent.TimeUnit.SECONDS,
-            )
-            .build()
+        .connectTimeout(CONNECT_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(READ_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(WRITE_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     suspend fun sendToGroqAPI(
         text: String,

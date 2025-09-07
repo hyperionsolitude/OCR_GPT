@@ -11,6 +11,12 @@
     <string name="processing">Processing&#8230;</string>
     <string name="image_preview_desc">Image preview</string>
     <string name="review_image_desc">Cropped image preview</string>
+    <string name="api_key_default_name">API Key %1$d</string>
+    <string name="api_key_name_hint">Enter name for this key</string>
+    <string name="add_api_key_title">Add New API Key</string>
+    <string name="api_key_added">API key added successfully</string>
+    <string name="api_key_add_failed">Failed to add API key</string>
+    <string name="add">Add</string>
     <string name="error_processing">Error processing image</string>
     <string name="camera_permission_required">Camera permission is required</string>
 </resources> 

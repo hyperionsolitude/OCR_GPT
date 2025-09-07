@@ -110,7 +110,7 @@ class ApiKeyDialogs(
                 .Builder(activity)
                 .setTitle(R.string.add_api_key_title)
                 .setView(layout)
-                .setPositiveButton(R.string.add) { _, _ ->
+                .setPositiveButton(R.string.add) { dialog, _ ->
                     val key = editText.text.toString().trim()
                     val name = nameText.text.toString().trim()
                     if (key.isNotEmpty() && name.isNotEmpty()) {
@@ -122,7 +122,7 @@ class ApiKeyDialogs(
                             }
                         }
                     }
-                }.setNegativeButton(R.string.cancel, null)
+                }.setNegativeButton(android.R.string.cancel) { dialog, _ -> dialog.dismiss() }
                 .create()
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
