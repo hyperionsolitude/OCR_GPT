@@ -35,8 +35,4 @@ ehthumbs.db
 Thumbs.db
 
 # Screenshots and device captures
-screenshots/
-*.png
-*.jpg
-*.jpeg
 ktlint
