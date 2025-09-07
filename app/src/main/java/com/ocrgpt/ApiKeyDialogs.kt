@@ -1,12 +1,12 @@
 package com.ocrgpt
 
+import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
@@ -95,36 +95,35 @@ class ApiKeyDialogs(
 
     private fun showAddApiKeyDialog() {
         val editText = EditText(activity).apply { hint = "Enter API key" }
+        val defaultName = activity.getString(R.string.api_key_default_name, apiKeyManager.getAllApiKeys().size + 1)
         val nameText = EditText(activity).apply {
-            hint = "Enter name for this key"
-            setText("API Key ${apiKeyManager.getAllApiKeys().size + 1}")
+            hint = activity.getString(R.string.api_key_name_hint)
+            setText(defaultName)
         }
         val layout = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             addView(nameText)
             addView(editText)
         }
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle("Add New API Key")
-            .setView(layout)
-            .setPositiveButton("Add") { _, _ ->
-                val key = editText.text.toString().trim()
-                val name = nameText.text.toString().trim()
-                if (key.isNotEmpty() && name.isNotEmpty()) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val success = apiKeyManager.addApiKey(key, name)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                activity,
-                                if (success) "API key added successfully" else "Failed to add API key",
-                                Toast.LENGTH_SHORT,
-                            ).show()
+        val dialog =
+            AlertDialog
+                .Builder(activity)
+                .setTitle(R.string.add_api_key_title)
+                .setView(layout)
+                .setPositiveButton(R.string.add) { _, _ ->
+                    val key = editText.text.toString().trim()
+                    val name = nameText.text.toString().trim()
+                    if (key.isNotEmpty() && name.isNotEmpty()) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val success = apiKeyManager.addApiKey(key, name)
+                            withContext(Dispatchers.Main) {
+                                val msgRes = if (success) R.string.api_key_added else R.string.api_key_add_failed
+                                Toast.makeText(activity, msgRes, Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
+                }.setNegativeButton(R.string.cancel, null)
+                .create()
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())

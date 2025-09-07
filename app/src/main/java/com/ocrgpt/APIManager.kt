@@ -1,23 +1,23 @@
 package com.ocrgpt
 
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.MediaType.Companion.toMediaType
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 
 class APIManager {
     private val client = OkHttpClient()
-    
+
     companion object {
         private const val MAX_TOKENS_LLAMA = 4096
         private const val MAX_TOKENS_MISTRAL = 4096
@@ -28,12 +28,8 @@ class APIManager {
         private const val TOP_P_DEFAULT = 0.9
     }
     
-    suspend fun sendToGroqAPIWithModel(
-        prompt: String,
-        model: String,
-        apiKey: String
-    ): String {
-        return withContext(Dispatchers.IO) {
+    suspend fun sendToGroqAPIWithModel(prompt: String, model: String, apiKey: String): String =
+        withContext(Dispatchers.IO) {
             try {
                 Log.d("OCR", "Using AI model: $model")
                 Log.d("OCR", "Full prompt being sent to AI: '$prompt'")
@@ -42,24 +38,21 @@ class APIManager {
                 val jsonBody = buildRequestJson(model, messagesArray)
                 val request = buildGroqRequest(apiKey, jsonBody)
                 executeGroqRequest(request)
-            } catch (e: IllegalStateException) {
-                Log.e("OCR", "Error in API call", e)
-                "Error: ${e.message}"
             } catch (e: IOException) {
                 Log.e("OCR", "Network error", e)
                 "Network error: ${e.message}"
             } catch (e: JSONException) {
                 Log.e("OCR", "JSON parsing error", e)
                 "JSON parsing error: ${e.message}"
-            } catch (e: IllegalStateException) {
-                Log.e("OCR", "State error", e)
-                "State error: ${e.message}"
             } catch (e: IllegalArgumentException) {
                 Log.e("OCR", "Argument error", e)
                 "Argument error: ${e.message}"
+            } catch (e: IllegalStateException) {
+                Log.e("OCR", "State error", e)
+                "State error: ${e.message}"
             }
         }
-    }
+    
 
     private fun buildMessagesArray(prompt: String): JSONArray {
         val messagesArray = JSONArray()
@@ -71,13 +64,12 @@ class APIManager {
         return messagesArray
     }
 
-    private fun buildRequestJson(model: String, messagesArray: JSONArray): String {
-        val jsonObject = JSONObject()
-        jsonObject.put("model", model)
-        jsonObject.put("messages", messagesArray)
-        addModelParameters(jsonObject, model)
-        return jsonObject.toString()
-    }
+    private fun buildRequestJson(model: String, messagesArray: JSONArray): String =
+        JSONObject().apply {
+            put("model", model)
+            put("messages", messagesArray)
+            addModelParameters(this, model)
+        }.toString()
 
     private fun addModelParameters(jsonObject: JSONObject, model: String) {
         when (model) {
@@ -102,8 +94,9 @@ class APIManager {
     private fun buildGroqRequest(apiKey: String, jsonBody: String): Request {
         val mediaType = "application/json".toMediaType()
         val requestBody = jsonBody.toRequestBody(mediaType)
-        
-        return Request.Builder()
+
+        return Request
+            .Builder()
             .url("https://api.groq.com/openai/v1/chat/completions")
             .post(requestBody)
             .addHeader("Authorization", "Bearer $apiKey")
@@ -135,8 +128,8 @@ class APIManager {
         }
     }
 
-    private fun parseGroqResponse(responseBody: String): String {
-        return try {
+    private fun parseGroqResponse(responseBody: String): String =
+        try {
             val jsonResponse = JSONObject(responseBody)
             val choices = jsonResponse.getJSONArray("choices")
             if (choices.length() > 0) {
@@ -150,5 +143,4 @@ class APIManager {
             Log.e("OCR", "Error parsing JSON response", e)
             "Error parsing AI response"
         }
-    }
 }

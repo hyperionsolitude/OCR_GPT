@@ -34,62 +34,67 @@ class ActivityResultCoordinator(
     var currentPhotoUri: Uri? = null
 
     fun init() {
-        cameraLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult(),
-        ) { result ->
-            Log.d("OCR", "Camera result: ${result.resultCode}")
-            if (result.resultCode == AppCompatActivity.RESULT_OK) {
-                onCameraSuccess(result)
-            } else {
-                Toast.makeText(activity, "Camera cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        galleryLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult(),
-        ) { result ->
-            Log.d("OCR", "Gallery result: ${result.resultCode}")
-            if (result.resultCode == AppCompatActivity.RESULT_OK) {
-                onGallerySuccess(result)
-            } else {
-                Toast.makeText(activity, "Gallery cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        cropLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult(),
-        ) { result ->
-            val data = result.data
-            val hasCropped = data?.hasExtra(CustomCropActivity.EXTRA_CROPPED_URI) == true
-            if (result.resultCode == AppCompatActivity.RESULT_OK && hasCropped) {
-                val croppedUriString = data?.getStringExtra(CustomCropActivity.EXTRA_CROPPED_URI)
-                croppedUriString?.let { uriString ->
-                    val uri = Uri.parse(uriString)
-                    onCropSuccess(uri)
+        cameraLauncher =
+            activity.registerForActivityResult(
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                Log.d("OCR", "Camera result: ${result.resultCode}")
+                if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                    onCameraSuccess(result)
+                } else {
+                    Toast.makeText(activity, "Camera cancelled", Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                Log.d("OCR", "Crop cancelled or failed: ${result.resultCode}")
             }
-        }
 
-        permissionLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { isGranted ->
-            if (isGranted) {
-                Log.d("OCR", "Camera permission granted")
-                launchCamera()
-            } else {
-                Log.d("OCR", "Camera permission denied")
-                Toast.makeText(activity, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
+        galleryLauncher =
+            activity.registerForActivityResult(
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                Log.d("OCR", "Gallery result: ${result.resultCode}")
+                if (result.resultCode == AppCompatActivity.RESULT_OK) {
+                    onGallerySuccess(result)
+                } else {
+                    Toast.makeText(activity, "Gallery cancelled", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
+
+        cropLauncher =
+            activity.registerForActivityResult(
+                ActivityResultContracts.StartActivityForResult(),
+            ) { result ->
+                val data = result.data
+                val hasCropped = data?.hasExtra(CustomCropActivity.EXTRA_CROPPED_URI) == true
+                if (result.resultCode == AppCompatActivity.RESULT_OK && hasCropped) {
+                    val croppedUriString = data?.getStringExtra(CustomCropActivity.EXTRA_CROPPED_URI)
+                    croppedUriString?.let { uriString ->
+                        val uri = Uri.parse(uriString)
+                        onCropSuccess(uri)
+                    }
+                } else {
+                    Log.d("OCR", "Crop cancelled or failed: ${result.resultCode}")
+                }
+            }
+
+        permissionLauncher =
+            activity.registerForActivityResult(
+                ActivityResultContracts.RequestPermission(),
+            ) { isGranted ->
+                if (isGranted) {
+                    Log.d("OCR", "Camera permission granted")
+                    launchCamera()
+                } else {
+                    Log.d("OCR", "Camera permission denied")
+                    Toast.makeText(activity, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
+                }
+            }
     }
 
     fun takePhoto() {
-        val hasCamera = ContextCompat.checkSelfPermission(
-            activity,
-            Manifest.permission.CAMERA,
-        ) == PackageManager.PERMISSION_GRANTED
+        val hasCamera =
+            ContextCompat.checkSelfPermission(
+                activity,
+                Manifest.permission.CAMERA,
+            ) == PackageManager.PERMISSION_GRANTED
         if (hasCamera) {
             launchCamera()
         } else {
@@ -119,20 +124,11 @@ class ActivityResultCoordinator(
             intent.putExtra(CustomCropActivity.EXTRA_IMAGE_URI, sourceUri.toString())
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             if ("file" == sourceUri.scheme ||
-                ("content" == sourceUri.scheme &&
-                    sourceUri.authority?.contains(activity.packageName) == true)
+                ("content" == sourceUri.scheme && sourceUri.authority?.contains(activity.packageName) == true)
             ) {
-                val cropActivityInfo =
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                        val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
-                        val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
-                        activity.packageManager
-                            .resolveActivity(intent, resolveFlags)
-                            ?.activityInfo
-                    } else {
-                        @Suppress("DEPRECATION")
-                        activity.packageManager.resolveActivity(intent, 0)?.activityInfo
-                    }
+                val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
+                val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
+                val cropActivityInfo = activity.packageManager.resolveActivity(intent, resolveFlags)?.activityInfo
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")
                     activity.grantUriPermission(
@@ -153,11 +149,12 @@ class ActivityResultCoordinator(
         try {
             val photoFile = createImageFileInCache()
             currentPhotoPath = photoFile.absolutePath
-            currentPhotoUri = FileProvider.getUriForFile(
-                activity,
-                "${activity.packageName}.fileprovider",
-                photoFile,
-            )
+            currentPhotoUri =
+                FileProvider.getUriForFile(
+                    activity,
+                    "${activity.packageName}.fileprovider",
+                    photoFile,
+                )
 
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
@@ -201,7 +198,6 @@ class ActivityResultCoordinator(
             cameraLauncher.launch(huaweiCameraIntent)
         } catch (e: ActivityNotFoundException) {
             Log.e("OCR", "Huawei camera not found", e)
-            // ignore, fallback not necessary here
         } catch (e: SecurityException) {
             Log.e("OCR", "Huawei camera permission denied", e)
             val fallbackIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
