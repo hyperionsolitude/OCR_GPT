@@ -236,7 +236,9 @@
                 android:background="@android:color/white"
                 android:padding="12dp"
                 android:scrollbars="vertical"
-                android:fadeScrollbars="false" />
+                android:fadeScrollbars="false"
+                android:scrollbarStyle="outsideOverlay"
+                android:overScrollMode="always" />
 
             <Button
                 android:id="@+id/btn_copy_ai"

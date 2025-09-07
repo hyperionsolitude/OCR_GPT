@@ -10,6 +10,7 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@Suppress("TooManyFunctions")
 class UIHelper(
     private val context: Context,
 ) {
@@ -85,11 +86,22 @@ class UIHelper(
 
     private fun generateBaseStyles(): String =
         """
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            margin: 20px;
+            margin: 0;
+            padding: 20px;
             background-color: #f5f5f5;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            height: 100%;
+            box-sizing: border-box;
         }
         .container {
             max-width: 800px;
@@ -98,6 +110,8 @@ class UIHelper(
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: calc(100% - 40px);
+            box-sizing: border-box;
         }
         """.trimIndent()
 
@@ -186,61 +200,69 @@ class UIHelper(
     private fun generateJavaScript(): String =
         """
         <script>
-            function __copyTextWithFallback(button, text) {
-                if (!text) { return; }
-                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(text)
-                        .then(function() { __copiedFeedback(button); })
-                        .catch(function() { __androidCopy(button, text); });
-                } else {
-                    __androidCopy(button, text);
-                }
-            }
-
-            function __androidCopy(button, text) {
-                try {
-                    if (window.Android && typeof window.Android.copyToClipboard === 'function') {
-                        window.Android.copyToClipboard(text);
-                        __copiedFeedback(button);
-                    }
-                } catch (e) {
-                    // swallow
-                }
-            }
-
-            function __copiedFeedback(button) {
-                if (!button) return;
-                const original = button.textContent;
-                button.textContent = 'Copied!';
-                setTimeout(function() { button.textContent = original || 'Copy'; }, 2000);
-            }
-
-            // Support both legacy and new handlers
-            function copyCode(button) {
-                // New style: find sibling pre text
-                var container = button && button.parentElement;
-                var pre = container ? container.querySelector('pre') : null;
-                var text = pre ? pre.textContent : '';
-                if (!text && button && button.dataset && button.dataset.code) {
-                    // Old style: use data-code attribute
-                    text = button.dataset.code;
-                }
-                __copyTextWithFallback(button, text);
-            }
-
-            function copyCodeToClipboard(button) {
-                copyCode(button);
-            }
-
-            // Event delegation for dynamically injected buttons
-            document.addEventListener('click', function(e) {
-                var t = e.target;
-                if (!t) return;
-                if (t.classList && (t.classList.contains('copy-btn') || t.classList.contains('copy-button'))) {
-                    copyCode(t);
-                }
-            }, false);
+            ${generateScrollingJS()}
+            ${generateCopyJS()}
+            ${generateEventJS()}
         </script>
+        """.trimIndent()
+
+    private fun generateScrollingJS(): String =
+        """
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.style.overflow = 'auto';
+            document.body.style.height = '100%';
+            document.addEventListener('touchstart', function(e) {}, { passive: true });
+            document.addEventListener('touchmove', function(e) {}, { passive: true });
+        });
+        """.trimIndent()
+
+    private fun generateCopyJS(): String =
+        """
+        function __copyTextWithFallback(button, text) {
+            if (!text) return;
+            if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(function() { __copiedFeedback(button); })
+                    .catch(function() { __androidCopy(button, text); });
+            } else {
+                __androidCopy(button, text);
+            }
+        }
+        function __androidCopy(button, text) {
+            try {
+                if (window.Android && typeof window.Android.copyToClipboard === 'function') {
+                    window.Android.copyToClipboard(text);
+                    __copiedFeedback(button);
+                }
+            } catch (e) {}
+        }
+        function __copiedFeedback(button) {
+            if (!button) return;
+            const original = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(function() { button.textContent = original || 'Copy'; }, 2000);
+        }
+        function copyCode(button) {
+            var container = button && button.parentElement;
+            var pre = container ? container.querySelector('pre') : null;
+            var text = pre ? pre.textContent : '';
+            if (!text && button && button.dataset && button.dataset.code) {
+                text = button.dataset.code;
+            }
+            __copyTextWithFallback(button, text);
+        }
+        function copyCodeToClipboard(button) { copyCode(button); }
+        """.trimIndent()
+
+    private fun generateEventJS(): String =
+        """
+        document.addEventListener('click', function(e) {
+            var t = e.target;
+            if (!t) return;
+            if (t.classList && (t.classList.contains('copy-btn') || t.classList.contains('copy-button'))) {
+                copyCode(t);
+            }
+        }, false);
         """.trimIndent()
 
     fun showToast(

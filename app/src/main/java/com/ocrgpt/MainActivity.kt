@@ -19,6 +19,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -576,6 +577,33 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             allowFileAccess = true
             allowContentAccess = true
+        }
+
+        // Enable proper touch scrolling
+        aiResponseWebView.isVerticalScrollBarEnabled = true
+        aiResponseWebView.isHorizontalScrollBarEnabled = false
+        aiResponseWebView.scrollBarStyle = WebView.SCROLLBARS_OUTSIDE_OVERLAY
+        aiResponseWebView.isScrollbarFadingEnabled = false
+
+        // Enable nested scrolling to work properly with parent ScrollView
+        aiResponseWebView.isNestedScrollingEnabled = true
+
+        // Custom touch listener to handle scrolling properly
+        aiResponseWebView.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    // Request focus and start nested scrolling
+                    view.parent.requestDisallowInterceptTouchEvent(true)
+                    view.requestFocus()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    // Allow parent to intercept touch events again
+                    view.parent.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            // Let the WebView handle the touch event
+            view.onTouchEvent(event)
+            true
         }
 
         // Add JavaScript interface for native copy functionality
