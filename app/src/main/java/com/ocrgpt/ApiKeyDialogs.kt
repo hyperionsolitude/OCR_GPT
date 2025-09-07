@@ -100,11 +100,13 @@ class ApiKeyDialogs(
             hint = activity.getString(R.string.api_key_name_hint)
             setText(defaultName)
         }
-        val layout = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(nameText)
-            addView(editText)
-        }
+        val layout =
+            LinearLayout(activity)
+                .apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(nameText)
+                    addView(editText)
+                }
         val dialog =
             AlertDialog
                 .Builder(activity)

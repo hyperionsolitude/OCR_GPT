@@ -131,7 +131,9 @@ class ActivityResultCoordinator(
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                         val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
                         val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
-                        activity.packageManager.resolveActivity(intent, resolveFlags)?.activityInfo
+                        activity.packageManager
+                            .resolveActivity(intent, resolveFlags)
+                            ?.activityInfo
                     } else {
                         @Suppress("DEPRECATION")
                         activity.packageManager.resolveActivity(intent, 0)?.activityInfo
@@ -175,7 +177,8 @@ class ActivityResultCoordinator(
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
                     val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
-                    activity.packageManager.resolveActivity(intent, resolveFlags)
+                    activity.packageManager
+                        .resolveActivity(intent, resolveFlags)
                 } else {
                     @Suppress("DEPRECATION")
                     intent.resolveActivity(activity.packageManager)
@@ -194,7 +197,9 @@ class ActivityResultCoordinator(
         }
     }
 
-    private fun launchHarmonyOSCamera(@Suppress("UNUSED_PARAMETER") photoFile: File) {
+    private fun launchHarmonyOSCamera(
+        @Suppress("UNUSED_PARAMETER") photoFile: File,
+    ) {
         try {
             val huaweiCameraIntent = Intent().apply {
                 setClassName("com.huawei.camera", "com.huawei.camera.ThirdCamera")
