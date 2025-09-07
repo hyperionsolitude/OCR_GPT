@@ -108,6 +108,7 @@ class ActivityResultCoordinator(
         galleryLauncher.launch(intent)
     }
 
+    @android.annotation.SuppressLint("NewApi")
     fun launchCrop(sourceUri: Uri) {
         try {
             Log.d("OCR", "Launching crop activity with URI: $sourceUri")
@@ -126,9 +127,15 @@ class ActivityResultCoordinator(
             if ("file" == sourceUri.scheme ||
                 ("content" == sourceUri.scheme && sourceUri.authority?.contains(activity.packageName) == true)
             ) {
-                val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
-                val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
-                val cropActivityInfo = activity.packageManager.resolveActivity(intent, resolveFlags)?.activityInfo
+                val cropActivityInfo =
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
+                        val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
+                        activity.packageManager.resolveActivity(intent, resolveFlags)?.activityInfo
+                    } else {
+                        @Suppress("DEPRECATION")
+                        activity.packageManager.resolveActivity(intent, 0)?.activityInfo
+                    }
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")
                     activity.grantUriPermission(
@@ -145,6 +152,7 @@ class ActivityResultCoordinator(
         }
     }
 
+    @android.annotation.SuppressLint("NewApi")
     private fun launchCamera() {
         try {
             val photoFile = createImageFileInCache()
