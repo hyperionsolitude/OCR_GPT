@@ -179,7 +179,7 @@
     <!-- Right Panel: Text Areas -->
     <LinearLayout
         android:layout_width="0dp"
-        android:layout_height="match_parent"
+        android:layout_height="400dp"
         android:layout_weight="1"
         android:orientation="vertical"
         android:padding="8dp">
@@ -191,17 +191,16 @@
             android:text="Prompt:"
             android:textStyle="bold"
             android:textColor="@android:color/black"
-            android:textSize="14sp"
+            android:textSize="16sp"
             android:layout_marginBottom="4dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="180dp"
             android:orientation="horizontal"
             android:layout_marginBottom="8dp"
             android:background="@android:color/white"
-            android:padding="4dp">
+            android:padding="8dp">
 
             <EditText
                 android:id="@+id/et_prompt"
@@ -209,14 +208,14 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@android:color/white"
-                android:padding="8dp"
+                android:padding="16dp"
+                android:minHeight="300dp"
                 android:textColor="@android:color/black"
-                android:textSize="12sp"
+                android:textSize="20sp"
                 android:scrollbars="vertical"
                 android:gravity="top|start"
                 android:inputType="textMultiLine|textCapSentences"
                 android:hint="Prompt will appear here..."
-                android:maxLines="10"
                 android:overScrollMode="always"
                 android:fadeScrollbars="false"
                 android:imeOptions="actionDone"
@@ -240,16 +239,15 @@
             android:text="AI Response:"
             android:textStyle="bold"
             android:textColor="@android:color/black"
-            android:textSize="14sp"
+            android:textSize="16sp"
             android:layout_marginBottom="4dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="180dp"
             android:orientation="horizontal"
             android:background="@android:color/white"
-            android:padding="4dp">
+            android:padding="8dp">
 
             <WebView
                 android:id="@+id/tv_ai_response"
@@ -257,7 +255,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@android:color/white"
-                android:padding="8dp"
+                android:padding="16dp"
                 android:scrollbars="vertical"
                 android:fadeScrollbars="false"
                 android:scrollbarStyle="outsideOverlay"

@@ -157,8 +157,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="400dp"
         android:orientation="vertical"
         android:layout_marginTop="16dp">
 
@@ -174,7 +173,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="180dp"
             android:orientation="horizontal"
             android:layout_marginBottom="16dp"
             android:background="@android:color/white"
@@ -183,18 +182,17 @@
             <EditText
                 android:id="@+id/et_prompt"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@android:color/white"
-                android:padding="12dp"
-                android:minHeight="120dp"
+                android:padding="16dp"
+                android:minHeight="400dp"
                 android:textColor="@android:color/black"
-                android:textSize="14sp"
+                android:textSize="22sp"
                 android:scrollbars="vertical"
                 android:gravity="top|start"
                 android:inputType="textMultiLine|textCapSentences"
                 android:hint="Prompt will appear here..."
-                android:maxLines="15"
                 android:overScrollMode="always"
                 android:fadeScrollbars="false"
                 android:imeOptions="actionDone"
@@ -222,8 +220,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="180dp"
             android:orientation="horizontal"
             android:background="@android:color/white"
             android:padding="8dp">
@@ -234,7 +231,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@android:color/white"
-                android:padding="12dp"
+                android:padding="16dp"
                 android:scrollbars="vertical"
                 android:fadeScrollbars="false"
                 android:scrollbarStyle="outsideOverlay"
