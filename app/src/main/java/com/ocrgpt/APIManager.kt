@@ -1,12 +1,6 @@
 package com.ocrgpt
 
 import android.util.Log
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import javax.net.ssl.SSLException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -14,6 +8,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 
 class APIManager {
     private val client = OkHttpClient()
@@ -72,13 +72,11 @@ class APIManager {
         model: String,
         messagesArray: JSONArray,
     ): String =
-        JSONObject()
-            .apply {
-                put("model", model)
-                put("messages", messagesArray)
-                addModelParameters(this, model)
-            }
-            .toString()
+        JSONObject().apply {
+            put("model", model)
+            put("messages", messagesArray)
+            addModelParameters(this, model)
+        }.toString()
 
     private fun addModelParameters(jsonObject: JSONObject, model: String) {
         when (model) {

@@ -166,12 +166,14 @@ class ActivityResultCoordinator(
                     photoFile,
                 )
 
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                putExtra("android.intent.extras.CAMERA_FACING", 0)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            }
+            val intent =
+                Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                    .apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                        putExtra("android.intent.extras.CAMERA_FACING", 0)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
 
             val resolveInfo =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -213,12 +215,14 @@ class ActivityResultCoordinator(
             Log.e("OCR", "Huawei camera not found", e)
         } catch (e: SecurityException) {
             Log.e("OCR", "Huawei camera permission denied", e)
-            val fallbackIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                putExtra("android.intent.extras.CAMERA_FACING", 0)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            }
+            val fallbackIntent =
+                Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                    .apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                        putExtra("android.intent.extras.CAMERA_FACING", 0)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
             cameraLauncher.launch(fallbackIntent)
         }
     }

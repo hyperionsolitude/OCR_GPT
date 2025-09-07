@@ -24,6 +24,7 @@ class ApiKeyDialogs(
         private const val PREVIEW_START = 3
         private const val PREVIEW_END = 4
     }
+
     fun showManagementDialog() {
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_api_key_management, null)
         val keysLayout = dialogView.findViewById<LinearLayout>(R.id.layout_api_keys)
