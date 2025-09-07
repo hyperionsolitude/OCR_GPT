@@ -24,11 +24,13 @@ class APIHandler {
         private const val TEST_MAX_TOKENS = 10
     }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(CONNECT_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(READ_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
-        .writeTimeout(WRITE_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
+    private val client =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(READ_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(WRITE_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
 
     suspend fun sendToGroqAPI(
         text: String,
@@ -64,7 +66,8 @@ class APIHandler {
         text: String,
         model: String,
         maxTokens: Int,
-    ): JSONObject = JSONObject().apply {
+    ): JSONObject =
+        JSONObject().apply {
             put(
                 "messages",
                 listOf(
@@ -83,9 +86,13 @@ class APIHandler {
         apiKey: String,
         json: JSONObject,
     ): Request {
-        val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+        val requestBody =
+            json
+                .toString()
+                .toRequestBody("application/json".toMediaType())
 
-        return Request.Builder()
+        return Request
+            .Builder()
             .url("https://api.groq.com/openai/v1/chat/completions")
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
@@ -111,7 +118,8 @@ class APIHandler {
         }
     }
 
-    suspend fun testAPIKey(apiKey: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun testAPIKey(apiKey: String): Boolean =
+        withContext(Dispatchers.IO) {
             try {
                 val response = sendToGroqAPI("Test", apiKey, "llama-3.1-8b-instant", TEST_MAX_TOKENS)
                 response.isNotEmpty() && !response.startsWith("API Error") && !response.startsWith("Error")
