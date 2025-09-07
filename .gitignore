@@ -40,3 +40,6 @@ screenshots/
 *.jpg
 *.jpeg
 ktlint
+# Ignore CI logs and lint artifacts
+logs_*.zip
+lint-results.zip
