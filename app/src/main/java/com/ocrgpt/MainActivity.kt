@@ -80,6 +80,9 @@ class MainActivity : AppCompatActivity() {
         private const val TIMEOUT_FACTOR = 0.3f
         private const val MAX_TOKENS = 4096
         private const val TEMPERATURE = 0.95f
+        private const val LEGACY_RESOLVE_FLAGS = 0
+        private const val RESOLVE_INFO_NO_FLAGS = 0L
+        private const val ANDROID_API_TIRAMISU = 33
 
         // Removed: old color processing bit constants
     }
@@ -657,6 +660,7 @@ class MainActivity : AppCompatActivity() {
 
     // file creation handled by ActivityResultCoordinator
 
+    @Suppress("LongMethod")
     private fun launchCropActivity(sourceUri: Uri) {
         try {
             Log.d("OCR", "Launching crop activity with URI: $sourceUri")
@@ -685,14 +689,14 @@ class MainActivity : AppCompatActivity() {
             if ("file" == sourceUri.scheme ||
                 ("content" == sourceUri.scheme && sourceUri.authority?.contains(packageName) == true)
             ) {
-                val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= ANDROID_API_TIRAMISU) {
                     packageManager.resolveActivity(
                         intent,
-                        android.content.pm.PackageManager.ResolveInfoFlags.of(0),
+                        android.content.pm.PackageManager.ResolveInfoFlags.of(RESOLVE_INFO_NO_FLAGS),
                     )?.activityInfo
                 } else {
                     @Suppress("DEPRECATION")
-                    packageManager.resolveActivity(intent, 0)?.activityInfo
+                    packageManager.resolveActivity(intent, LEGACY_RESOLVE_FLAGS)?.activityInfo
                 }
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")

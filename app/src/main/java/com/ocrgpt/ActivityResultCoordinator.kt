@@ -119,17 +119,20 @@ class ActivityResultCoordinator(
             intent.putExtra(CustomCropActivity.EXTRA_IMAGE_URI, sourceUri.toString())
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             if ("file" == sourceUri.scheme ||
-                ("content" == sourceUri.scheme && sourceUri.authority?.contains(activity.packageName) == true)
+                ("content" == sourceUri.scheme &&
+                    sourceUri.authority?.contains(activity.packageName) == true)
             ) {
-                val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                    activity.packageManager.resolveActivity(
-                        intent,
-                        android.content.pm.PackageManager.ResolveInfoFlags.of(0),
-                    )?.activityInfo
-                } else {
-                    @Suppress("DEPRECATION")
-                    activity.packageManager.resolveActivity(intent, 0)?.activityInfo
-                }
+                val cropActivityInfo =
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        val flags =
+                            android.content.pm.PackageManager.ResolveInfoFlags.of(0L)
+                        activity.packageManager
+                            .resolveActivity(intent, flags)
+                            ?.activityInfo
+                    } else {
+                        @Suppress("DEPRECATION")
+                        activity.packageManager.resolveActivity(intent, 0)?.activityInfo
+                    }
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")
                     activity.grantUriPermission(
@@ -163,15 +166,14 @@ class ActivityResultCoordinator(
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
 
-            val resolveInfo = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                activity.packageManager.resolveActivity(
-                    intent,
-                    android.content.pm.PackageManager.ResolveInfoFlags.of(0),
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                intent.resolveActivity(activity.packageManager)
-            }
+            val resolveInfo =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    val flags = android.content.pm.PackageManager.ResolveInfoFlags.of(0L)
+                    activity.packageManager.resolveActivity(intent, flags)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.resolveActivity(activity.packageManager)
+                }
             if (resolveInfo != null) {
                 cameraLauncher.launch(intent)
             } else {
