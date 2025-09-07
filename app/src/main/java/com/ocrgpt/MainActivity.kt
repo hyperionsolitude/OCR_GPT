@@ -81,7 +81,6 @@ class MainActivity : AppCompatActivity() {
         private const val MAX_TOKENS = 4096
         private const val TEMPERATURE = 0.95f
         private const val LEGACY_RESOLVE_FLAGS = 0
-        private const val RESOLVE_INFO_NO_FLAGS = 0L
         private const val ANDROID_API_TIRAMISU = 33
 
         // Removed: old color processing bit constants
@@ -690,9 +689,10 @@ class MainActivity : AppCompatActivity() {
                 ("content" == sourceUri.scheme && sourceUri.authority?.contains(packageName) == true)
             ) {
                 val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= ANDROID_API_TIRAMISU) {
+                    val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
                     packageManager.resolveActivity(
                         intent,
-                        android.content.pm.PackageManager.ResolveInfoFlags.of(RESOLVE_INFO_NO_FLAGS),
+                        android.content.pm.PackageManager.ResolveInfoFlags.of(flags),
                     )?.activityInfo
                 } else {
                     @Suppress("DEPRECATION")

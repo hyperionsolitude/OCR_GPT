@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import android.util.Log
 
 class PermissionManager(private val context: Context) {
@@ -83,7 +84,11 @@ class PermissionManager(private val context: Context) {
     fun shouldShowRationale(permission: String): Boolean {
         return try {
             if (context is androidx.activity.ComponentActivity) {
-                context.shouldShowRequestPermissionRationale(permission)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    ActivityCompat.shouldShowRequestPermissionRationale(context, permission)
+                } else {
+                    false
+                }
             } else {
                 false
             }

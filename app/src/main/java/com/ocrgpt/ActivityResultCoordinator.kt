@@ -124,10 +124,10 @@ class ActivityResultCoordinator(
             ) {
                 val cropActivityInfo =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                        val flags =
-                            android.content.pm.PackageManager.ResolveInfoFlags.of(0L)
+                        val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
+                        val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
                         activity.packageManager
-                            .resolveActivity(intent, flags)
+                            .resolveActivity(intent, resolveFlags)
                             ?.activityInfo
                     } else {
                         @Suppress("DEPRECATION")
@@ -168,8 +168,9 @@ class ActivityResultCoordinator(
 
             val resolveInfo =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    val flags = android.content.pm.PackageManager.ResolveInfoFlags.of(0L)
-                    activity.packageManager.resolveActivity(intent, flags)
+                    val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
+                    val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
+                    activity.packageManager.resolveActivity(intent, resolveFlags)
                 } else {
                     @Suppress("DEPRECATION")
                     intent.resolveActivity(activity.packageManager)
