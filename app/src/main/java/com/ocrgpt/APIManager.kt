@@ -68,12 +68,17 @@ class APIManager {
         return messagesArray
     }
 
-    private fun buildRequestJson(model: String, messagesArray: JSONArray): String =
-        JSONObject().apply {
-            put("model", model)
-            put("messages", messagesArray)
-            addModelParameters(this, model)
-        }.toString()
+    private fun buildRequestJson(
+        model: String,
+        messagesArray: JSONArray,
+    ): String =
+        JSONObject()
+            .apply {
+                put("model", model)
+                put("messages", messagesArray)
+                addModelParameters(this, model)
+            }
+            .toString()
 
     private fun addModelParameters(jsonObject: JSONObject, model: String) {
         when (model) {
@@ -111,8 +116,8 @@ class APIManager {
             .build()
     }
 
-    private fun executeGroqRequest(request: Request): String {
-        return try {
+    private fun executeGroqRequest(request: Request): String =
+        try {
             val response = client.newCall(request).execute()
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
@@ -133,7 +138,6 @@ class APIManager {
             Log.e("OCR", "IO error", e)
             "Network error: ${e.message}"
         }
-    }
 
     private fun parseGroqResponse(responseBody: String): String =
         try {
