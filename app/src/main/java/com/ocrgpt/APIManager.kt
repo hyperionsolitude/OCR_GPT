@@ -1,6 +1,10 @@
 package com.ocrgpt
 
 import android.util.Log
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -10,10 +14,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import javax.net.ssl.SSLException
 
 class APIManager {
     private val client = OkHttpClient()
@@ -27,7 +27,7 @@ class APIManager {
         private const val TOP_P_HIGH = 1.0
         private const val TOP_P_DEFAULT = 0.9
     }
-    
+
     suspend fun sendToGroqAPIWithModel(
         prompt: String,
         model: String,
@@ -95,7 +95,10 @@ class APIManager {
         }
     }
 
-    private fun buildGroqRequest(apiKey: String, jsonBody: String): Request {
+    private fun buildGroqRequest(
+        apiKey: String,
+        jsonBody: String,
+    ): Request {
         val mediaType = "application/json".toMediaType()
         val requestBody = jsonBody.toRequestBody(mediaType)
 
