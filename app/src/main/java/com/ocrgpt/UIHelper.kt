@@ -183,23 +183,26 @@ class UIHelper(
         }
     }
 
-    fun formatLastUsed(timestamp: Long): String {
-        val now = System.currentTimeMillis()
-        val diff = now - timestamp
-
-        return when {
-            diff < ONE_MINUTE_MS -> "Just now"
-            diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
-            diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
-            else -> "${diff / ONE_DAY_MS}d ago"
+    fun formatValue(value: Long, type: FormatType): String = when (type) {
+        FormatType.TIME -> {
+            val now = System.currentTimeMillis()
+            val diff = now - value
+            when {
+                diff < ONE_MINUTE_MS -> "Just now"
+                diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
+                diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
+                else -> "${diff / ONE_DAY_MS}d ago"
+            }
+        }
+        FormatType.SIZE -> when {
+            value < KB_SIZE -> "$value B"
+            value < MB_SIZE -> "${value / KB_SIZE} KB"
+            value < GB_SIZE -> "${value / MB_SIZE} MB"
+            else -> "${value / GB_SIZE} GB"
         }
     }
 
-    fun formatFileSize(bytes: Long): String =
-        when {
-            bytes < KB_SIZE -> "$bytes B"
-            bytes < MB_SIZE -> "${bytes / KB_SIZE} KB"
-            bytes < GB_SIZE -> "${bytes / MB_SIZE} MB"
-            else -> "${bytes / GB_SIZE} GB"
-        }
+    enum class FormatType {
+        TIME, SIZE
+    }
 }

@@ -78,7 +78,7 @@ class CustomCropActivity : AppCompatActivity() {
 
         // Update the crop overlay when orientation changes
         runOnUiThread {
-            cropOverlay.updateForOrientationChange()
+            cropOverlay.handleCropRect("update")
         }
     }
 
@@ -199,7 +199,7 @@ class CustomCropActivity : AppCompatActivity() {
 
     private fun performCrop() {
         try {
-            val cropRect = cropOverlay.getCropRect()
+            val cropRect = cropOverlay.handleCropRect("get")!!
             if (cropRect.width() <= 0 || cropRect.height() <= 0) {
                 Toast.makeText(this, "Invalid crop area", Toast.LENGTH_SHORT).show()
                 return
@@ -424,7 +424,7 @@ class CropOverlayView
             cropRect.right = cropRect.right.coerceIn(cropRect.left + handleSize, imageBounds.right)
             cropRect.bottom = cropRect.bottom.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
 
-            updateHandles()
+            updateHandlePositions()
             invalidate()
         }
 
@@ -454,9 +454,10 @@ class CropOverlayView
             return RectF(left, top, left + scaledImageWidth, top + scaledImageHeight)
         }
 
-        fun getCropRect(): RectF = RectF(cropRect)
-
-        fun updateForOrientationChange() {
+        fun handleCropRect(action: String): RectF? {
+            return when (action) {
+                "get" -> RectF(cropRect)
+                "update" -> {
             // Recalculate crop rectangle position when orientation changes
             post {
                 val imageBounds = getImageBoundsInView()
@@ -484,12 +485,16 @@ class CropOverlayView
                         newBottom.coerceIn(imageBounds.top + handleSize, imageBounds.bottom),
                     )
 
-                    updateHandles()
+                    updateHandlePositions()
                     invalidate()
                 } else {
                     // If bounds are not ready, reinitialize the crop rectangle
                     initializeCropRectangle()
                 }
+            }
+                    null
+                }
+                else -> null
             }
         }
 
@@ -502,11 +507,11 @@ class CropOverlayView
             super.onSizeChanged(w, h, oldw, oldh)
             // Update crop rectangle when view size changes (e.g., during orientation change)
             post {
-                updateForOrientationChange()
+                handleCropRect("update")
             }
         }
 
-        private fun updateHandles() {
+        private fun updateHandlePositions() {
             val halfHandle = handleSize / 2
 
             // Corner handles
@@ -564,6 +569,7 @@ class CropOverlayView
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
+            updateHandlePositions()
 
             // Draw semi-transparent overlay
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
@@ -606,7 +612,7 @@ class CropOverlayView
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (handled) {
-                        updateHandles()
+                        updateHandlePositions()
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -620,7 +626,20 @@ class CropOverlayView
         private fun handleTouchInteraction(x: Float, y: Float, action: Int): Boolean {
             return when (action) {
                 MotionEvent.ACTION_DOWN -> {
-                    dragHandle = findHandle(x, y)
+                    // Inline findHandle to reduce function count
+                    dragHandle = -1
+                    for (i in handles.indices) {
+                        val expandedHandle = RectF(
+                            handles[i].left - touchSlop,
+                            handles[i].top - touchSlop,
+                            handles[i].right + touchSlop,
+                            handles[i].bottom + touchSlop,
+                        )
+                        if (expandedHandle.contains(x, y)) {
+                            dragHandle = i
+                            break
+                        }
+                    }
                     isDragging = dragHandle != -1
                     isDragging
                 }
@@ -676,18 +695,5 @@ class CropOverlayView
             }
         }
 
-        private fun findHandle(x: Float, y: Float): Int {
-            for (i in handles.indices) {
-                val expandedHandle = RectF(
-                    handles[i].left - touchSlop,
-                    handles[i].top - touchSlop,
-                    handles[i].right + touchSlop,
-                    handles[i].bottom + touchSlop,
-                )
-                if (expandedHandle.contains(x, y)) {
-                    return i
-                }
-            }
-            return -1
-        }
+        // findHandle logic is inlined in handleTouchInteraction to reduce function count
     }

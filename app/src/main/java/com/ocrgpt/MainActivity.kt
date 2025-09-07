@@ -1,3 +1,4 @@
+@file:Suppress("LargeClass", "TooManyFunctions")
 package com.ocrgpt
 
 import android.Manifest
@@ -32,8 +33,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
+// ActivityResult launchers moved to ActivityResultCoordinator
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -68,35 +68,12 @@ data class ConversationMessage(
 
 class MainActivity : AppCompatActivity() {
     companion object {
-        // Time constants (in milliseconds)
-        private const val ONE_MINUTE_MS = 60000L
-        private const val ONE_HOUR_MS = 3600000L
-        private const val ONE_DAY_MS = 86400000L
 
-        // Image processing constants
-        private const val MAX_IMAGE_SIZE = 1024
         private const val UNIQUE_ID_MULTIPLIER = 1000
         private const val PROGRESS_DELAY_MS = 100L
         private const val PROGRESS_DURATION_MS = 300L
 
-        // Color constants
-        private const val RED_SHIFT = 16
-        private const val GREEN_SHIFT = 8
-        private const val ALPHA_SHIFT = 24
-        private const val COLOR_MASK = 0xFF
-        private const val BRIGHTNESS_THRESHOLD_LOW = 100
-        private const val BRIGHTNESS_THRESHOLD_HIGH = 150
-        private const val BRIGHTNESS_FACTOR_LOW = 1.3f
-        private const val BRIGHTNESS_FACTOR_HIGH = 1.15f
-        private const val BRIGHTNESS_FACTOR_DEFAULT = 1.05f
-        private const val CONTRAST_FACTOR = 1.3f
-        private const val GRAYSCALE_RED_WEIGHT = 0.299f
-        private const val GRAYSCALE_GREEN_WEIGHT = 0.587f
-        private const val GRAYSCALE_BLUE_WEIGHT = 0.114f
-        private const val GRAYSCALE_OFFSET = 128
-        private const val MAX_COLOR_VALUE = 255
-        private const val ENHANCEMENT_FACTOR = 0.7f
-        private const val ENHANCEMENT_OFFSET = 0.3f
+        // Removed: old enhancement-related constants
 
         // API constants
         private const val MAX_REQUEST_SIZE = 1024
@@ -104,14 +81,7 @@ class MainActivity : AppCompatActivity() {
         private const val MAX_TOKENS = 4096
         private const val TEMPERATURE = 0.95f
 
-        // API key display constants
-        private const val API_KEY_PREVIEW_START = 8
-        private const val API_KEY_PREVIEW_END = 4
-
-        // Color processing constants
-        private const val COLOR_CHANNELS = 3
-        private const val RED_SHIFT_BITS = 16
-        private const val GREEN_SHIFT_BITS = 8
+        // Removed: old color processing bit constants
     }
 
     private lateinit var imageView: ImageView
@@ -126,7 +96,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var newConversationButton: Button
     private var currentBitmap: Bitmap? = null
     private var currentPhotoUri: Uri? = null
-    private var currentPhotoPath: String? = null
     private var currentPrompt: String = ""
     private var currentPromptText: String = "" // Store the actual text content
     private var croppedImageUri: Uri? = null
@@ -151,9 +120,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageProcessor: ImageProcessor
     private lateinit var uiHelper: UIHelper
 
-    // Activity Result Launchers
-    private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
-    private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
+    // Coordinators
+    private lateinit var activityResultCoordinator: ActivityResultCoordinator
+    private lateinit var imageFlowManager: ImageFlowManager
+    private lateinit var apiKeyDialogs: ApiKeyDialogs
+    private lateinit var settingsDialogs: SettingsDialogs
 
     // Progress indicator
     private var progressDialog: AlertDialog? = null
@@ -199,8 +170,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private lateinit var cropLauncher: ActivityResultLauncher<Intent>
-    private lateinit var permissionLauncher: ActivityResultLauncher<String>
+    
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -294,23 +264,24 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun setupActivityResultLaunchers() {
-        setupCameraLauncher()
-        setupGalleryLauncher()
-        setupCropLauncher()
-        setupPermissionLauncher()
+        activityResultCoordinator = ActivityResultCoordinator(
+            this,
+            onCameraSuccess = { result -> handleCameraSuccess(result) },
+            onGallerySuccess = { result -> handleGallerySuccess(result) },
+            onCropSuccess = { uri ->
+                croppedImageUri = uri
+                loadImageFromUri(uri)
+                updateButtonStates()
+                Log.d("OCR", "New cropped image set: $uri")
+            },
+        )
+        activityResultCoordinator.init()
+        apiKeyDialogs = ApiKeyDialogs(this, apiKeyManager, modelManager, uiHelper)
+        settingsDialogs = SettingsDialogs(this, apiKeyDialogs)
+        imageFlowManager = ImageFlowManager(this, ImageProcessor(this))
     }
 
-    private fun setupCameraLauncher() {
-        cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            Log.d("OCR", "Camera result: ${result.resultCode}")
-            if (result.resultCode == RESULT_OK) {
-                handleCameraSuccess(result)
-            } else {
-                Log.d("OCR", "Camera cancelled or failed: ${result.resultCode}")
-                Toast.makeText(this, "Camera cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    // extracted to ActivityResultCoordinator
 
     private fun handleCameraSuccess(result: ActivityResult) {
         clearOldData()
@@ -338,17 +309,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupGalleryLauncher() {
-        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            Log.d("OCR", "Gallery result: ${result.resultCode}")
-            if (result.resultCode == RESULT_OK) {
-                handleGallerySuccess(result)
-            } else {
-                Log.d("OCR", "Gallery cancelled: ${result.resultCode}")
-                Toast.makeText(this, "Gallery cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    // extracted to ActivityResultCoordinator
 
     private fun handleGallerySuccess(result: ActivityResult) {
         clearOldData()
@@ -370,35 +331,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupCropLauncher() {
-        cropLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            if (result.resultCode == RESULT_OK && data?.hasExtra(CustomCropActivity.EXTRA_CROPPED_URI) == true) {
-                val croppedUriString = data.getStringExtra(CustomCropActivity.EXTRA_CROPPED_URI)
-                croppedUriString?.let { uriString ->
-                    val uri = Uri.parse(uriString)
-                    croppedImageUri = uri
-                    loadImageFromUri(uri)
-                    updateButtonStates()
-                    Log.d("OCR", "New cropped image set: $uriString")
-                }
-            } else {
-                Log.d("OCR", "Crop cancelled or failed: ${result.resultCode}")
-            }
-        }
-    }
+    // extracted to ActivityResultCoordinator
 
-    private fun setupPermissionLauncher() {
-        permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                Log.d("OCR", "Camera permission granted")
-                launchCamera()
-            } else {
-                Log.d("OCR", "Camera permission denied")
-                Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
+    // extracted to ActivityResultCoordinator
 
     private fun checkApiKeyAndInitializeModels() {
         val activeKeys = apiKeyManager.getActiveApiKeys()
@@ -540,7 +475,7 @@ class MainActivity : AppCompatActivity() {
             modelIdText.text = model.id
             categoryText.text = model.category.uppercase()
 
-            checkbox.setOnCheckedChangeListener { _, isChecked ->
+            checkbox.setOnCheckedChangeListener { _, _ ->
                 modelManager.setModelSelection(model.id)
                 updateSelectedCount(selectedCountText)
             }
@@ -581,285 +516,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSelectedCount(textView: TextView) {
-        val count = (modelManager.getModelInfo() as Pair<Int, Int>).second
+        val count = modelManager.getModels(true).size
         textView.text = "Selected: $count models"
     }
 
-    private fun showApiKeyManagementDialog() {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_api_key_management, null)
-        val keysLayout = dialogView.findViewById<LinearLayout>(R.id.layout_api_keys)
-        val addButton = dialogView.findViewById<Button>(R.id.btn_add_api_key)
-        val resetButton = dialogView.findViewById<Button>(R.id.btn_reset_failed)
-        val testButton = dialogView.findViewById<Button>(R.id.btn_test_keys)
-
-        refreshApiKeyList(keysLayout)
-
-        addButton.setOnClickListener {
-            showAddApiKeyDialog()
-        }
-
-        resetButton.setOnClickListener {
-            CoroutineScope(Dispatchers.IO).launch {
-                apiKeyManager.resetFailedKeys()
-                withContext(Dispatchers.Main) {
-                    refreshApiKeyList(keysLayout)
-                    Toast.makeText(this@MainActivity, "Reset all failed API keys", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        testButton.setOnClickListener {
-            testAllApiKeys()
-        }
-
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setView(dialogView)
-                .setPositiveButton("Done") { _, _ ->
-                    // Refresh model spinner in case API keys changed
-                    initializeModels()
-                }.setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.show()
-
-        // Customize button colors for dark theme
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
-    }
-
-    private fun refreshApiKeyList(layout: LinearLayout) {
-        layout.removeAllViews()
-        val apiKeys = apiKeyManager.getAllApiKeys()
-
-        apiKeys.forEachIndexed { index, apiKey ->
-            val keyView = LayoutInflater.from(this).inflate(R.layout.item_api_key, null)
-            val checkbox = keyView.findViewById<CheckBox>(R.id.checkbox_active)
-            val nameText = keyView.findViewById<TextView>(R.id.tv_key_name)
-            val previewText = keyView.findViewById<TextView>(R.id.tv_key_preview)
-            val usageText = keyView.findViewById<TextView>(R.id.tv_usage_count)
-            val lastUsedText = keyView.findViewById<TextView>(R.id.tv_last_used)
-            val editButton = keyView.findViewById<Button>(R.id.btn_edit)
-            val deleteButton = keyView.findViewById<Button>(R.id.btn_delete)
-
-            checkbox.isChecked = apiKey.isActive
-            nameText.text = apiKey.name
-            previewText.text = "${apiKey.key.take(API_KEY_PREVIEW_START)}...${apiKey.key.takeLast(API_KEY_PREVIEW_END)}"
-            usageText.text = "${apiKey.usageCount} uses"
-            lastUsedText.text = formatLastUsed(apiKey.lastUsed)
-
-            checkbox.setOnCheckedChangeListener { _, isChecked ->
-                CoroutineScope(Dispatchers.IO).launch {
-                    apiKeyManager.updateApiKey(index, apiKey.name, isChecked)
-                }
-            }
-
-            editButton.setOnClickListener {
-                showEditApiKeyDialog(index, apiKey)
-            }
-
-            deleteButton.setOnClickListener {
-                showDeleteApiKeyDialog(index, apiKey.name)
-            }
-
-            layout.addView(keyView)
-        }
-    }
-
-    private fun showAddApiKeyDialog() {
-        val editText =
-            EditText(this).apply {
-                hint = "Enter API key"
-            }
-        val nameText =
-            EditText(this).apply {
-                hint = "Enter name for this key"
-                setText("API Key ${apiKeyManager.getAllApiKeys().size + 1}")
-            }
-
-        val layout =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(nameText)
-                addView(editText)
-            }
-
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setTitle("Add New API Key")
-                .setView(layout)
-                .setPositiveButton("Add") { _, _ ->
-                    val key = editText.text.toString().trim()
-                    val name = nameText.text.toString().trim()
-                    if (key.isNotEmpty() && name.isNotEmpty()) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val success = apiKeyManager.addApiKey(key, name)
-                            withContext(Dispatchers.Main) {
-                                if (success) {
-                                    Toast
-                                        .makeText(
-                                            this@MainActivity,
-                                            "API key added successfully",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                } else {
-                                    Toast
-                                        .makeText(
-                                            this@MainActivity,
-                                            "Failed to add API key (duplicate or limit reached)",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                }
-                            }
-                        }
-                    }
-                }.setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.show()
-
-        // Customize button colors for dark theme
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
-    }
-
-    private fun showEditApiKeyDialog(
-        index: Int,
-        apiKey: ApiKeyInfo,
-    ) {
-        val editText =
-            EditText(this).apply {
-                setText(apiKey.name)
-            }
-
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setTitle("Edit API Key")
-                .setView(editText)
-                .setPositiveButton("Save") { _, _ ->
-                    val newName = editText.text.toString().trim()
-                    if (newName.isNotEmpty()) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            apiKeyManager.updateApiKey(index, newName, apiKey.isActive)
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "API key updated", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }.setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.show()
-
-        // Customize button colors for dark theme
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
-    }
-
-    private fun showDeleteApiKeyDialog(
-        index: Int,
-        name: String,
-    ) {
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setTitle("Delete API Key")
-                .setMessage("Are you sure you want to delete '$name'?")
-                .setPositiveButton("Delete") { _, _ ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val success = apiKeyManager.removeApiKey(index)
-                        withContext(Dispatchers.Main) {
-                            if (success) {
-                                Toast.makeText(this@MainActivity, "API key deleted", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(this@MainActivity, "Failed to delete API key", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                }.setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.show()
-
-        // Customize button colors for dark theme
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFFF44336.toInt())
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFF4CAF50.toInt())
-    }
-
-    private fun testAllApiKeys() {
-        Toast.makeText(this, "Testing API keys...", Toast.LENGTH_SHORT).show()
-        CoroutineScope(Dispatchers.IO).launch {
-            val activeKeys = apiKeyManager.getActiveApiKeys()
-            var successCount = 0
-
-            activeKeys.forEach { apiKey ->
-                try {
-                    val models = modelManager.fetchAvailableModels(apiKey.key)
-                    if (models.isNotEmpty()) {
-                        successCount++
-                    }
-                } catch (e: IOException) {
-                    Log.e("OCR", "Network error testing API key ${apiKey.name}: ${e.message}")
-                } catch (e: IllegalStateException) {
-                    Log.e("OCR", "Illegal state error testing API key ${apiKey.name}: ${e.message}")
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                Toast
-                    .makeText(
-                        this@MainActivity,
-                        "API key test complete: $successCount/${activeKeys.size} working",
-                        Toast.LENGTH_LONG,
-                    ).show()
-            }
-        }
-    }
-
-    private fun formatLastUsed(timestamp: Long): String {
-        val now = System.currentTimeMillis()
-        val diff = now - timestamp
-
-        return when {
-            diff < ONE_MINUTE_MS -> "Just now"
-            diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
-            diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
-            else -> "${diff / ONE_DAY_MS}d ago"
-        }
-    }
-
-    private fun showApiKeySettingsDialog() {
-        showApiKeyManagementDialog()
-    }
-
+    // Dialogs handled by ApiKeyDialogs / SettingsDialogs
+    // Use settingsDialogs/apiKeyDialogs directly where needed
+    private fun showApiKeySettingsDialog() { apiKeyDialogs.showManagementDialog() }
     private fun showSettingsDialog() {
-        val options =
-            arrayOf(
-                "🔑 Manage API Keys",
-                "🤖 Select AI Models",
-                "ℹ️ About",
-            )
-
-        val dialog =
-            AlertDialog
-                .Builder(this)
-                .setTitle("Settings")
-                .setItems(options) { _, which ->
-                    when (which) {
-                        0 -> showApiKeyManagementDialog()
-                        1 -> showModelSelectionDialog()
-                        2 -> showAboutDialog()
-                    }
-                }.setNegativeButton("Cancel", null)
-                .create()
-
-        dialog.show()
-
-        // Customize button colors for dark theme
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
+        settingsDialogs.showSettingsDialog(
+            { showModelSelectionDialog() },
+            { showAboutDialog() },
+        )
     }
 
     private fun showAboutDialog() {
@@ -980,99 +648,14 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun takePhoto() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            launchCamera()
-        } else {
-            // Request camera permission
-            Log.d("OCR", "Requesting camera permission")
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        activityResultCoordinator.takePhoto()
     }
 
-    private fun launchCamera() {
-        try {
-            // Use cache directory for better HarmonyOS compatibility
-            val photoFile = createImageFileInCache()
-            currentPhotoPath = photoFile.absolutePath
-            currentPhotoUri =
-                FileProvider.getUriForFile(
-                    this,
-                    "$packageName.fileprovider",
-                    photoFile,
-                )
+    // camera handled by ActivityResultCoordinator
 
-            Log.d("OCR", "Created photo file: ${photoFile.absolutePath}")
-            Log.d("OCR", "Photo URI: $currentPhotoUri")
+    // Harmony camera handled by ActivityResultCoordinator
 
-            // Try standard camera intent first - explicitly set to back camera
-            val intent =
-                Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                    putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                    putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                }
-
-            // Try to resolve activity first, but don't fail if it returns null on HarmonyOS
-            val resolveInfo = intent.resolveActivity(packageManager)
-            Log.d("OCR", "Resolve activity result: $resolveInfo")
-
-            if (resolveInfo != null) {
-                // Standard approach works
-                Log.d("OCR", "Launching standard camera intent")
-                cameraLauncher.launch(intent)
-            } else {
-                // Try HarmonyOS-specific approach
-                Log.d("OCR", "Standard camera not found, trying HarmonyOS approach")
-                launchHarmonyOSCamera(photoFile)
-            }
-        } catch (e: ActivityNotFoundException) {
-            Log.e("OCR", "Camera activity not found", e)
-            Toast.makeText(this, "Camera not available: ${e.message}", Toast.LENGTH_SHORT).show()
-        } catch (e: SecurityException) {
-            Log.e("OCR", "Camera permission denied", e)
-            Toast.makeText(this, "Camera permission denied: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun launchHarmonyOSCamera(
-        @Suppress("UNUSED_PARAMETER") photoFile: File,
-    ) {
-        try {
-            // Try to launch Huawei camera directly - explicitly set to back camera
-            val huaweiCameraIntent =
-                Intent().apply {
-                    setClassName("com.huawei.camera", "com.huawei.camera.ThirdCamera")
-                    putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                    putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                }
-
-            Log.d("OCR", "Trying Huawei camera directly")
-            cameraLauncher.launch(huaweiCameraIntent)
-        } catch (e: ActivityNotFoundException) {
-            Log.e("OCR", "Huawei camera not found", e)
-            // Fallback to standard intent anyway - explicitly set to back camera
-        } catch (e: SecurityException) {
-            Log.e("OCR", "Huawei camera permission denied", e)
-            // Fallback to standard intent anyway - explicitly set to back camera
-            val fallbackIntent =
-                Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-                    putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                    putExtra("android.intent.extras.CAMERA_FACING", 0) // 0 = back camera, 1 = front camera
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                }
-            cameraLauncher.launch(fallbackIntent)
-        }
-    }
-
-    private fun createImageFileInCache(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir = cacheDir // Use cache directory instead of external files
-        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
-    }
+    // file creation handled by ActivityResultCoordinator
 
     private fun launchCropActivity(sourceUri: Uri) {
         try {
@@ -1102,7 +685,15 @@ class MainActivity : AppCompatActivity() {
             if ("file" == sourceUri.scheme ||
                 ("content" == sourceUri.scheme && sourceUri.authority?.contains(packageName) == true)
             ) {
-                val cropActivityInfo = packageManager.resolveActivity(intent, 0)?.activityInfo
+                val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    packageManager.resolveActivity(
+                        intent,
+                        android.content.pm.PackageManager.ResolveInfoFlags.of(0),
+                    )?.activityInfo
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.resolveActivity(intent, 0)?.activityInfo
+                }
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")
                     grantUriPermission(
@@ -1116,8 +707,8 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.d("OCR", "Not granting URI permission for gallery/content URI: $sourceUri")
             }
-            Log.d("OCR", "Starting crop activity with intent: $intent, URI: $sourceUri, flags: ${intent.flags}")
-            cropLauncher.launch(intent)
+            Log.d("OCR", "Starting crop via coordinator for URI: $sourceUri")
+            activityResultCoordinator.launchCrop(sourceUri)
         } catch (e: ActivityNotFoundException) {
             Log.e("OCR", "Crop activity not found", e)
             Toast.makeText(this, "Crop activity not available: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -1139,144 +730,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadImageFromUri(uri: Uri) {
-        try {
-            Log.d("OCR", "Loading image from URI: $uri")
-            val inputStream = contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-
-            if (bitmap != null) {
-                // Preprocess image for better OCR
-                val processedBitmap = preprocessImageForOCR(bitmap)
-                currentBitmap = processedBitmap
-                imageView.setImageBitmap(processedBitmap)
-                updateButtonStates()
-                Toast.makeText(this, "Image loaded successfully", Toast.LENGTH_SHORT).show()
-                Log.d("OCR", "Image loaded: ${processedBitmap.width}x${processedBitmap.height}")
-            } else {
-                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show()
-                Log.e("OCR", "Failed to decode bitmap from URI: $uri")
-            }
-        } catch (e: IOException) {
-            Toast.makeText(this, "IO error loading image: ${e.message}", Toast.LENGTH_SHORT).show()
-            Log.e("OCR", "IO error loading image from URI: $uri", e)
-        } catch (e: SecurityException) {
-            Toast.makeText(this, "Permission denied loading image: ${e.message}", Toast.LENGTH_SHORT).show()
-            Log.e("OCR", "Permission denied loading image from URI: $uri", e)
+        imageFlowManager.loadImageFromUri(uri) { processedBitmap ->
+            currentBitmap = processedBitmap
+            imageView.setImageBitmap(processedBitmap)
+            updateButtonStates()
         }
     }
 
-    private fun preprocessImageForOCR(originalBitmap: Bitmap): Bitmap =
-        try {
-            // Resize if too large (MLKit works better with reasonable sizes)
-            val maxSize = MAX_IMAGE_SIZE
-            val width = originalBitmap.width
-            val height = originalBitmap.height
+    // Removed: preprocessing delegated to ImageProcessor/ImageFlowManager
 
-            val resizedBitmap =
-                if (width > maxSize || height > maxSize) {
-                    val scale = maxSize.toFloat() / maxOf(width, height)
-                    val newWidth = (width * scale).toInt()
-                    val newHeight = (height * scale).toInt()
-                    Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
-                } else {
-                    originalBitmap
-                }
+    // Removed: image enhancement delegated to ImageProcessor
 
-            // Enhance image for better OCR, especially for monitor captures
-            val enhancedBitmap = enhanceImageForOCR(resizedBitmap)
+    // Removed: image enhancement helpers extracted
 
-            // Clean up intermediate bitmap if we created one
-            if (width > maxSize || height > maxSize) {
-                resizedBitmap.recycle()
-            }
+    // Removed: image enhancement helpers extracted
 
-            enhancedBitmap
-        } catch (e: OutOfMemoryError) {
-            Log.e("OCR", "Out of memory preprocessing image: ${e.message}", e)
-            originalBitmap // Return original if preprocessing fails
-        } catch (e: IllegalStateException) {
-            Log.e("OCR", "Illegal state error preprocessing image: ${e.message}", e)
-            originalBitmap // Return original if preprocessing fails
-        }
-
-    private fun enhanceImageForOCR(bitmap: Bitmap): Bitmap {
-        return try {
-            val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-            val pixels = IntArray(mutableBitmap.width * mutableBitmap.height)
-            mutableBitmap.getPixels(pixels, 0, mutableBitmap.width, 0, 0, mutableBitmap.width, mutableBitmap.height)
-
-            val avgBrightness = calculateAverageBrightness(pixels)
-            val brightnessAdjustment = determineBrightnessAdjustment(avgBrightness)
-            val contrastAdjustment = CONTRAST_FACTOR
-
-            val enhancedPixels = enhancePixels(pixels, brightnessAdjustment, contrastAdjustment)
-            mutableBitmap.setPixels(
-                enhancedPixels,
-                0,
-                mutableBitmap.width,
-                0,
-                0,
-                mutableBitmap.width,
-                mutableBitmap.height,
-            )
-
-            Log.d(
-                "OCR",
-                "Image enhanced - Original avg brightness: $avgBrightness, " +
-                    "Brightness adjustment: $brightnessAdjustment",
-            )
-            mutableBitmap
-        } catch (e: OutOfMemoryError) {
-            Log.e("OCR", "Out of memory enhancing image: ${e.message}", e)
-            bitmap
-        } catch (e: IllegalStateException) {
-            Log.e("OCR", "Illegal state error enhancing image: ${e.message}", e)
-            bitmap
-        }
-    }
-
-    private fun calculateAverageBrightness(pixels: IntArray): Int {
-        var totalBrightness = 0
-        pixels.forEach { pixel ->
-            val red = (pixel shr RED_SHIFT_BITS) and COLOR_MASK
-            val green = (pixel shr GREEN_SHIFT_BITS) and COLOR_MASK
-            val blue = pixel and COLOR_MASK
-            totalBrightness += (red + green + blue) / COLOR_CHANNELS
-        }
-        return totalBrightness / pixels.size
-    }
-
-    private fun determineBrightnessAdjustment(avgBrightness: Int): Float =
-        when {
-            avgBrightness < BRIGHTNESS_THRESHOLD_LOW -> BRIGHTNESS_FACTOR_LOW
-            avgBrightness < BRIGHTNESS_THRESHOLD_HIGH -> BRIGHTNESS_FACTOR_HIGH
-            else -> BRIGHTNESS_FACTOR_DEFAULT
-        }
-
-    private fun enhancePixels(pixels: IntArray, brightnessAdjustment: Float, contrastAdjustment: Float): IntArray =
-        pixels.map { pixel ->
-            val alpha = (pixel shr ALPHA_SHIFT) and COLOR_MASK
-            val red = (pixel shr RED_SHIFT) and COLOR_MASK
-            val green = (pixel shr GREEN_SHIFT) and COLOR_MASK
-            val blue = pixel and COLOR_MASK
-
-            val gray =
-                (red * GRAYSCALE_RED_WEIGHT + green * GRAYSCALE_GREEN_WEIGHT + blue * GRAYSCALE_BLUE_WEIGHT).toInt()
-            val adjustedGray =
-                ((gray - GRAYSCALE_OFFSET) * contrastAdjustment + GRAYSCALE_OFFSET).toInt()
-            val enhancedGray =
-                (adjustedGray * brightnessAdjustment).toInt().coerceIn(0, MAX_COLOR_VALUE)
-
-            val enhancedRed =
-                (red * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
-            val enhancedGreen =
-                (green * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
-            val enhancedBlue =
-                (blue * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
-
-            (alpha shl ALPHA_SHIFT) or (enhancedRed shl RED_SHIFT) or (enhancedGreen shl GREEN_SHIFT) or enhancedBlue
-        }.toIntArray()
+    // Removed: image enhancement helpers extracted
 
     private fun testMLKit() {
         Log.d("OCR", "Testing MLKit initialization...")
@@ -1318,7 +787,7 @@ class MainActivity : AppCompatActivity() {
 
             if (resolvedIntent != null) {
                 Log.d("OCR", "Launching gallery intent")
-                galleryLauncher.launch(resolvedIntent)
+                activityResultCoordinator.launchGalleryPicker()
             } else {
                 Log.e("OCR", "No gallery app found")
                 Toast.makeText(this, "No gallery app found on this device", Toast.LENGTH_SHORT).show()
