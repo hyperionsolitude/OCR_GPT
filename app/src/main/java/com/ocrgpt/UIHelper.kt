@@ -21,6 +21,7 @@ class UIHelper(
         private const val MB_SIZE = 1024L * 1024L
         private const val GB_SIZE = 1024L * 1024L * 1024L
     }
+
     fun copyToClipboard(
         text: String,
         label: String = "OCR Text",
@@ -73,13 +74,14 @@ class UIHelper(
         </html>
         """.trimIndent()
 
-    private fun generateCssStyles(): String = buildString {
-        append("<style>")
-        append(generateBaseStyles())
-        append(generateCodeBlockStyles())
-        append(generateTypographyStyles())
-        append("</style>")
-    }
+    private fun generateCssStyles(): String =
+        buildString {
+            append("<style>")
+            append(generateBaseStyles())
+            append(generateCodeBlockStyles())
+            append(generateTypographyStyles())
+            append("</style>")
+        }
 
     private fun generateBaseStyles(): String =
         """
@@ -155,7 +157,6 @@ class UIHelper(
         }
         """.trimIndent()
 
-
     private fun generateJavaScript(): String =
         """
         <script>
@@ -183,26 +184,32 @@ class UIHelper(
         }
     }
 
-    fun formatValue(value: Long, type: FormatType): String = when (type) {
-        FormatType.TIME -> {
-            val now = System.currentTimeMillis()
-            val diff = now - value
-            when {
-                diff < ONE_MINUTE_MS -> "Just now"
-                diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
-                diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
-                else -> "${diff / ONE_DAY_MS}d ago"
+    fun formatValue(
+        value: Long,
+        type: FormatType,
+    ): String =
+        when (type) {
+            FormatType.TIME -> {
+                val now = System.currentTimeMillis()
+                val diff = now - value
+                when {
+                    diff < ONE_MINUTE_MS -> "Just now"
+                    diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
+                    diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
+                    else -> "${diff / ONE_DAY_MS}d ago"
+                }
             }
+            FormatType.SIZE ->
+                when {
+                    value < KB_SIZE -> "$value B"
+                    value < MB_SIZE -> "${value / KB_SIZE} KB"
+                    value < GB_SIZE -> "${value / MB_SIZE} MB"
+                    else -> "${value / GB_SIZE} GB"
+                }
         }
-        FormatType.SIZE -> when {
-            value < KB_SIZE -> "$value B"
-            value < MB_SIZE -> "${value / KB_SIZE} KB"
-            value < GB_SIZE -> "${value / MB_SIZE} MB"
-            else -> "${value / GB_SIZE} GB"
-        }
-    }
 
     enum class FormatType {
-        TIME, SIZE
+        TIME,
+        SIZE,
     }
 }

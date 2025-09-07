@@ -194,7 +194,7 @@ class ModelManager(
         return DEFAULT_MODELS
     }
 
-    fun getModels(selectedOnly: Boolean = false): List<ModelInfo> = 
+    fun getModels(selectedOnly: Boolean = false): List<ModelInfo> =
         if (selectedOnly) {
             availableModels.filter { selectedModels.contains(it.id) }
         } else {
@@ -203,8 +203,11 @@ class ModelManager(
 
     fun getSelectedModelIds(): List<String> = selectedModels.toList()
 
-    fun setModelSelection(modelId: String? = null, select: Boolean? = null): Boolean {
-        return if (modelId != null) {
+    fun setModelSelection(
+        modelId: String? = null,
+        select: Boolean? = null,
+    ): Boolean =
+        if (modelId != null) {
             // Toggle single model
             if (selectedModels.contains(modelId)) {
                 selectedModels.remove(modelId)
@@ -231,9 +234,8 @@ class ModelManager(
             saveSelectedModels()
             select ?: false
         }
-    }
 
-    fun getModelInfo(modelId: String? = null): Any = 
+    fun getModelInfo(modelId: String? = null): Any =
         if (modelId != null) {
             selectedModels.contains(modelId)
         } else {

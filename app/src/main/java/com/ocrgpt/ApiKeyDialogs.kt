@@ -97,10 +97,11 @@ class ApiKeyDialogs(
     private fun showAddApiKeyDialog() {
         val editText = EditText(activity).apply { hint = "Enter API key" }
         val defaultName = activity.getString(R.string.api_key_default_name, apiKeyManager.getAllApiKeys().size + 1)
-        val nameText = EditText(activity).apply {
-            hint = activity.getString(R.string.api_key_name_hint)
-            setText(defaultName)
-        }
+        val nameText =
+            EditText(activity).apply {
+                hint = activity.getString(R.string.api_key_name_hint)
+                setText(defaultName)
+            }
         val layout =
             LinearLayout(activity)
                 .apply {
@@ -132,47 +133,56 @@ class ApiKeyDialogs(
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
     }
 
-    private fun showEditApiKeyDialog(index: Int, apiKey: ApiKeyInfo) {
+    private fun showEditApiKeyDialog(
+        index: Int,
+        apiKey: ApiKeyInfo,
+    ) {
         val editText = EditText(activity).apply { setText(apiKey.name) }
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle("Edit API Key")
-            .setView(editText)
-            .setPositiveButton("Save") { _, _ ->
-                val newName = editText.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        apiKeyManager.updateApiKey(index, newName, apiKey.isActive)
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(activity, "API key updated", Toast.LENGTH_SHORT).show()
+        val dialog =
+            AlertDialog
+                .Builder(activity)
+                .setTitle("Edit API Key")
+                .setView(editText)
+                .setPositiveButton("Save") { _, _ ->
+                    val newName = editText.text.toString().trim()
+                    if (newName.isNotEmpty()) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            apiKeyManager.updateApiKey(index, newName, apiKey.isActive)
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(activity, "API key updated", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
+                }.setNegativeButton("Cancel", null)
+                .create()
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFF4CAF50.toInt())
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFFF44336.toInt())
     }
 
-    private fun showDeleteApiKeyDialog(index: Int, name: String) {
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle("Delete API Key")
-            .setMessage("Are you sure you want to delete '$name'?")
-            .setPositiveButton("Delete") { _, _ ->
-                CoroutineScope(Dispatchers.IO).launch {
-                    val success = apiKeyManager.removeApiKey(index)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(
-                            activity,
-                            if (success) "API key deleted" else "Failed to delete API key",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+    private fun showDeleteApiKeyDialog(
+        index: Int,
+        name: String,
+    ) {
+        val dialog =
+            AlertDialog
+                .Builder(activity)
+                .setTitle("Delete API Key")
+                .setMessage("Are you sure you want to delete '$name'?")
+                .setPositiveButton("Delete") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val success = apiKeyManager.removeApiKey(index)
+                        withContext(Dispatchers.Main) {
+                            Toast
+                                .makeText(
+                                    activity,
+                                    if (success) "API key deleted" else "Failed to delete API key",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                        }
                     }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
+                }.setNegativeButton("Cancel", null)
+                .create()
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(0xFFF44336.toInt())
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(0xFF4CAF50.toInt())
@@ -191,14 +201,13 @@ class ApiKeyDialogs(
                 }
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    activity,
-                    "API key test complete: $successCount/${activeKeys.size} working",
-                    Toast.LENGTH_LONG,
-                ).show()
+                Toast
+                    .makeText(
+                        activity,
+                        "API key test complete: $successCount/${activeKeys.size} working",
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
         }
     }
 }
-
-

@@ -129,8 +129,12 @@ class ActivityResultCoordinator(
             ) {
                 val cropActivityInfo =
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                        val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
-                        val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
+                        val flags =
+                            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                                .toLong()
+                        val resolveFlags =
+                            android.content.pm.PackageManager.ResolveInfoFlags
+                                .of(flags)
                         activity.packageManager
                             .resolveActivity(intent, resolveFlags)
                             ?.activityInfo
@@ -177,8 +181,12 @@ class ActivityResultCoordinator(
 
             val resolveInfo =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
-                    val resolveFlags = android.content.pm.PackageManager.ResolveInfoFlags.of(flags)
+                    val flags =
+                        android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                            .toLong()
+                    val resolveFlags =
+                        android.content.pm.PackageManager.ResolveInfoFlags
+                            .of(flags)
                     activity.packageManager
                         .resolveActivity(intent, resolveFlags)
                 } else {
@@ -203,13 +211,14 @@ class ActivityResultCoordinator(
         @Suppress("UNUSED_PARAMETER") photoFile: File,
     ) {
         try {
-            val huaweiCameraIntent = Intent().apply {
-                setClassName("com.huawei.camera", "com.huawei.camera.ThirdCamera")
-                putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
-                putExtra("android.intent.extras.CAMERA_FACING", 0)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            }
+            val huaweiCameraIntent =
+                Intent().apply {
+                    setClassName("com.huawei.camera", "com.huawei.camera.ThirdCamera")
+                    putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri)
+                    putExtra("android.intent.extras.CAMERA_FACING", 0)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                }
             cameraLauncher.launch(huaweiCameraIntent)
         } catch (e: ActivityNotFoundException) {
             Log.e("OCR", "Huawei camera not found", e)

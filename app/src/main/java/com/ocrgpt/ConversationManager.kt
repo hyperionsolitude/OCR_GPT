@@ -18,7 +18,6 @@ data class ConversationEntry(
 class ConversationManager(
     private val context: Context,
 ) {
-
     private val prefs: SharedPreferences =
         context.getSharedPreferences("conversation_history", Context.MODE_PRIVATE)
 
@@ -26,7 +25,7 @@ class ConversationManager(
         private const val PREFS_KEY_CONVERSATIONS = "conversations"
         private const val MAX_CONVERSATIONS = 100
     }
-    
+
     suspend fun addConversation(
         prompt: String,
         response: String,
@@ -57,7 +56,7 @@ class ConversationManager(
                 Log.e("ConversationManager", "Invalid argument error adding conversation: ${e.message}")
             }
         }
-    
+
     fun getConversations(): List<ConversationEntry> =
         try {
             val jsonString = prefs.getString(PREFS_KEY_CONVERSATIONS, "[]") ?: "[]"
@@ -84,7 +83,7 @@ class ConversationManager(
             Log.e("ConversationManager", "Invalid argument error loading conversations: ${e.message}")
             emptyList()
         }
-    
+
     private fun saveConversations(conversations: List<ConversationEntry>) {
         try {
             val jsonArray = JSONArray()
@@ -106,29 +105,30 @@ class ConversationManager(
             Log.e("ConversationManager", "Invalid argument error saving conversations: ${e.message}")
         }
     }
-    
+
     fun clearConversations() {
         prefs.edit().remove(PREFS_KEY_CONVERSATIONS).apply()
     }
-    
+
     fun getConversationCount(): Int = getConversations().size
-    
+
     fun getLastConversation(): ConversationEntry? = getConversations().lastOrNull()
-    
+
     fun getConversationsByModel(model: String): List<ConversationEntry> =
         getConversations().filter { it.model == model }
-    
-    fun exportConversations(): String {
-        return try {
+
+    fun exportConversations(): String =
+        try {
             val conversations = getConversations()
             val jsonArray = JSONArray()
             for (conversation in conversations) {
-                val jsonObject = JSONObject().apply {
-                    put("timestamp", conversation.timestamp)
-                    put("prompt", conversation.prompt)
-                    put("response", conversation.response)
-                    put("model", conversation.model)
-                }
+                val jsonObject =
+                    JSONObject().apply {
+                        put("timestamp", conversation.timestamp)
+                        put("prompt", conversation.prompt)
+                        put("response", conversation.response)
+                        put("model", conversation.model)
+                    }
                 jsonArray.put(jsonObject)
             }
             jsonArray.toString(2)
@@ -139,5 +139,4 @@ class ConversationManager(
             Log.e("ConversationManager", "Invalid argument error exporting conversations: ${e.message}")
             "[]"
         }
-    }
 }

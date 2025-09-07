@@ -1,4 +1,5 @@
 @file:Suppress("LargeClass", "TooManyFunctions")
+
 package com.ocrgpt
 
 import android.Manifest
@@ -9,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import androidx.activity.result.ActivityResult
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -33,7 +33,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-// ActivityResult launchers moved to ActivityResultCoordinator
+import androidx.activity.result.ActivityResult
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -68,7 +68,6 @@ data class ConversationMessage(
 
 class MainActivity : AppCompatActivity() {
     companion object {
-
         private const val UNIQUE_ID_MULTIPLIER = 1000
         private const val PROGRESS_DELAY_MS = 100L
         private const val PROGRESS_DURATION_MS = 300L
@@ -172,8 +171,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -230,7 +227,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupEditText() {
         promptEditText.setVerticalScrollBarEnabled(true)
-        promptEditText.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance())
+        promptEditText.setMovementMethod(
+            android.text.method.ScrollingMovementMethod
+                .getInstance(),
+        )
         promptEditText.setOnTouchListener { v, _ ->
             if (v.hasFocus()) {
                 v.parent.requestDisallowInterceptTouchEvent(canEditTextScrollVertically(promptEditText))
@@ -248,8 +248,8 @@ class MainActivity : AppCompatActivity() {
         modeToggleButton.setOnClickListener { toggleMode() }
         newConversationButton.setOnClickListener { startNewConversation() }
         clearButton.setOnClickListener { clearAll() }
-        findViewById<Button>(R.id.btn_copy_ocr).setOnClickListener { 
-            copyToClipboard(promptEditText.text.toString(), "Prompt") 
+        findViewById<Button>(R.id.btn_copy_ocr).setOnClickListener {
+            copyToClipboard(promptEditText.text.toString(), "Prompt")
         }
         findViewById<Button>(R.id.btn_copy_ai).setOnClickListener {
             copyToClipboard(getWebViewText(aiResponseWebView), "AI Response")
@@ -262,21 +262,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
-
     private fun setupActivityResultLaunchers() {
-        activityResultCoordinator = ActivityResultCoordinator(
-            this,
-            onCameraSuccess = { result -> handleCameraSuccess(result) },
-            onGallerySuccess = { result -> handleGallerySuccess(result) },
-            onCropSuccess = { uri ->
-                croppedImageUri = uri
-                loadImageFromUri(uri)
-                updateButtonStates()
-                Log.d("OCR", "New cropped image set: $uri")
-            },
-        )
+        activityResultCoordinator =
+            ActivityResultCoordinator(
+                this,
+                onCameraSuccess = { result -> handleCameraSuccess(result) },
+                onGallerySuccess = { result -> handleGallerySuccess(result) },
+                onCropSuccess = { uri ->
+                    croppedImageUri = uri
+                    loadImageFromUri(uri)
+                    updateButtonStates()
+                    Log.d("OCR", "New cropped image set: $uri")
+                },
+            )
         activityResultCoordinator.init()
         apiKeyDialogs = ApiKeyDialogs(this, apiKeyManager, modelManager, uiHelper)
         settingsDialogs = SettingsDialogs(this, apiKeyDialogs)
@@ -524,7 +522,10 @@ class MainActivity : AppCompatActivity() {
 
     // Dialogs handled by ApiKeyDialogs / SettingsDialogs
     // Use settingsDialogs/apiKeyDialogs directly where needed
-    private fun showApiKeySettingsDialog() { apiKeyDialogs.showManagementDialog() }
+    private fun showApiKeySettingsDialog() {
+        apiKeyDialogs.showManagementDialog()
+    }
+
     private fun showSettingsDialog() {
         settingsDialogs.showSettingsDialog(
             { showModelSelectionDialog() },
@@ -688,16 +689,21 @@ class MainActivity : AppCompatActivity() {
             if ("file" == sourceUri.scheme ||
                 ("content" == sourceUri.scheme && sourceUri.authority?.contains(packageName) == true)
             ) {
-                val cropActivityInfo = if (android.os.Build.VERSION.SDK_INT >= ANDROID_API_TIRAMISU) {
-                    val flags = android.content.pm.PackageManager.MATCH_DEFAULT_ONLY.toLong()
-                    packageManager.resolveActivity(
-                        intent,
-                        android.content.pm.PackageManager.ResolveInfoFlags.of(flags),
-                    )?.activityInfo
-                } else {
-                    @Suppress("DEPRECATION")
-                    packageManager.resolveActivity(intent, LEGACY_RESOLVE_FLAGS)?.activityInfo
-                }
+                val cropActivityInfo =
+                    if (android.os.Build.VERSION.SDK_INT >= ANDROID_API_TIRAMISU) {
+                        val flags =
+                            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+                                .toLong()
+                        packageManager
+                            .resolveActivity(
+                                intent,
+                                android.content.pm.PackageManager.ResolveInfoFlags
+                                    .of(flags),
+                            )?.activityInfo
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageManager.resolveActivity(intent, LEGACY_RESOLVE_FLAGS)?.activityInfo
+                    }
                 if (cropActivityInfo != null) {
                     Log.d("OCR", "Granting URI permission to crop activity: ${cropActivityInfo.packageName}")
                     grantUriPermission(
@@ -1051,21 +1057,22 @@ class MainActivity : AppCompatActivity() {
         val selectedModels = modelManager.getModels(true)
 
         selectedModels.forEach { model ->
-            val job = CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val response = sendToGroqAPIWithModel(prompt, model.id)
-                    modelResponses[model.name] = response
-                    Log.d("OCR", "Response from ${model.name}: $response")
-                    withContext(Dispatchers.Main) { updateAllModelsProgress() }
-                } catch (e: IOException) {
-                    modelResponses[model.name] = "Network error: ${e.message}"
-                    Log.e("OCR", "Network error getting response from ${model.name}: ${e.message}", e)
-                } catch (e: IllegalStateException) {
-                    modelResponses[model.name] = "Error: ${e.message}"
-                    Log.e("OCR", "Illegal state error getting response from ${model.name}: ${e.message}", e)
-                    withContext(Dispatchers.Main) { updateAllModelsProgress() }
+            val job =
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val response = sendToGroqAPIWithModel(prompt, model.id)
+                        modelResponses[model.name] = response
+                        Log.d("OCR", "Response from ${model.name}: $response")
+                        withContext(Dispatchers.Main) { updateAllModelsProgress() }
+                    } catch (e: IOException) {
+                        modelResponses[model.name] = "Network error: ${e.message}"
+                        Log.e("OCR", "Network error getting response from ${model.name}: ${e.message}", e)
+                    } catch (e: IllegalStateException) {
+                        modelResponses[model.name] = "Error: ${e.message}"
+                        Log.e("OCR", "Illegal state error getting response from ${model.name}: ${e.message}", e)
+                        withContext(Dispatchers.Main) { updateAllModelsProgress() }
+                    }
                 }
-            }
             jobs.add(job)
         }
         return jobs
@@ -1197,7 +1204,10 @@ class MainActivity : AppCompatActivity() {
         return messagesArray
     }
 
-    private fun addConversationHistory(messagesArray: JSONArray, prompt: String) {
+    private fun addConversationHistory(
+        messagesArray: JSONArray,
+        prompt: String,
+    ) {
         conversationHistory.forEach { message ->
             messagesArray.put(
                 JSONObject().apply {
@@ -1210,7 +1220,10 @@ class MainActivity : AppCompatActivity() {
         Log.d("OCR", "Including conversation history: ${conversationHistory.size} messages + current message")
     }
 
-    private fun addSingleMessage(messagesArray: JSONArray, prompt: String) {
+    private fun addSingleMessage(
+        messagesArray: JSONArray,
+        prompt: String,
+    ) {
         messagesArray.put(
             JSONObject().apply {
                 put("role", "user")
@@ -1219,7 +1232,10 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun buildRequestJson(model: String, messagesArray: JSONArray): String =
+    private fun buildRequestJson(
+        model: String,
+        messagesArray: JSONArray,
+    ): String =
         JSONObject()
             .apply {
                 put("model", model)
@@ -1227,7 +1243,10 @@ class MainActivity : AppCompatActivity() {
                 addModelParameters(this, model)
             }.toString()
 
-    private fun addModelParameters(jsonObject: JSONObject, model: String) {
+    private fun addModelParameters(
+        jsonObject: JSONObject,
+        model: String,
+    ) {
         when (model) {
             "llama-3.3-70b-versatile" -> {
                 jsonObject.put("temperature", 1.0)
@@ -1247,7 +1266,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun buildGroqRequest(apiKey: String, jsonBody: String): Request =
+    private fun buildGroqRequest(
+        apiKey: String,
+        jsonBody: String,
+    ): Request =
         Request
             .Builder()
             .url("https://api.groq.com/openai/v1/chat/completions")
@@ -1256,8 +1278,11 @@ class MainActivity : AppCompatActivity() {
             .post(jsonBody.toRequestBody("application/json".toMediaType()))
             .build()
 
-    private fun executeGroqRequest(client: OkHttpClient, request: Request): String {
-        return try {
+    private fun executeGroqRequest(
+        client: OkHttpClient,
+        request: Request,
+    ): String =
+        try {
             val response = client.newCall(request).execute()
             val responseBody = response.body?.string() ?: "No response"
 
@@ -1269,7 +1294,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: IOException) {
             "Network error: ${e.message}"
         }
-    }
 
     private fun parseGroqResponse(responseBody: String): String {
         val jsonResponse = JSONObject(responseBody)

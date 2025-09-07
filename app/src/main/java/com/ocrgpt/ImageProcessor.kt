@@ -23,6 +23,7 @@ class ImageProcessor(
         private const val NORMAL_SCALE = 1f
         private const val JPEG_QUALITY = 90
     }
+
     suspend fun loadImageFromUri(uri: Uri): Bitmap? =
         withContext(Dispatchers.IO) {
             try {

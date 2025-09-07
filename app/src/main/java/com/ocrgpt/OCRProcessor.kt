@@ -18,6 +18,7 @@ class OCRProcessor {
         private const val MIN_IMAGE_WIDTH = 800
         private const val MIN_IMAGE_HEIGHT = 600
     }
+
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     suspend fun processImageForOCR(bitmap: Bitmap): String =
