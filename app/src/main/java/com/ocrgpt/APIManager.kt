@@ -28,7 +28,11 @@ class APIManager {
         private const val TOP_P_DEFAULT = 0.9
     }
     
-    suspend fun sendToGroqAPIWithModel(prompt: String, model: String, apiKey: String): String =
+    suspend fun sendToGroqAPIWithModel(
+        prompt: String,
+        model: String,
+        apiKey: String,
+    ): String =
         withContext(Dispatchers.IO) {
             try {
                 Log.d("OCR", "Using AI model: $model")
@@ -52,7 +56,6 @@ class APIManager {
                 "State error: ${e.message}"
             }
         }
-    
 
     private fun buildMessagesArray(prompt: String): JSONArray {
         val messagesArray = JSONArray()
