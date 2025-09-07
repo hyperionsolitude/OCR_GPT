@@ -103,6 +103,14 @@ class UIHelper(
 
     private fun generateCodeBlockStyles(): String =
         """
+        .code-container {
+            position: relative;
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px 15px 15px 15px;
+            margin: 10px 0;
+        }
         .code-block {
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
@@ -125,13 +133,31 @@ class UIHelper(
             border-radius: 3px;
             cursor: pointer;
             font-size: 12px;
+            z-index: 10;
+        }
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 10;
         }
         .copy-btn:hover {
+            background: #0056b3;
+        }
+        .copy-button:hover {
             background: #0056b3;
         }
         pre {
             white-space: pre-wrap;
             word-wrap: break-word;
+            margin-top: 0;
         }
         """.trimIndent()
 
@@ -160,16 +186,60 @@ class UIHelper(
     private fun generateJavaScript(): String =
         """
         <script>
-            function copyCode(button) {
-                const codeBlock = button.parentElement;
-                const text = codeBlock.querySelector('pre').textContent;
-                navigator.clipboard.writeText(text).then(function() {
-                    button.textContent = 'Copied!';
-                    setTimeout(function() {
-                        button.textContent = 'Copy';
-                    }, 2000);
-                });
+            function __copyTextWithFallback(button, text) {
+                if (!text) { return; }
+                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text)
+                        .then(function() { __copiedFeedback(button); })
+                        .catch(function() { __androidCopy(button, text); });
+                } else {
+                    __androidCopy(button, text);
+                }
             }
+
+            function __androidCopy(button, text) {
+                try {
+                    if (window.Android && typeof window.Android.copyToClipboard === 'function') {
+                        window.Android.copyToClipboard(text);
+                        __copiedFeedback(button);
+                    }
+                } catch (e) {
+                    // swallow
+                }
+            }
+
+            function __copiedFeedback(button) {
+                if (!button) return;
+                const original = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(function() { button.textContent = original || 'Copy'; }, 2000);
+            }
+
+            // Support both legacy and new handlers
+            function copyCode(button) {
+                // New style: find sibling pre text
+                var container = button && button.parentElement;
+                var pre = container ? container.querySelector('pre') : null;
+                var text = pre ? pre.textContent : '';
+                if (!text && button && button.dataset && button.dataset.code) {
+                    // Old style: use data-code attribute
+                    text = button.dataset.code;
+                }
+                __copyTextWithFallback(button, text);
+            }
+
+            function copyCodeToClipboard(button) {
+                copyCode(button);
+            }
+
+            // Event delegation for dynamically injected buttons
+            document.addEventListener('click', function(e) {
+                var t = e.target;
+                if (!t) return;
+                if (t.classList && (t.classList.contains('copy-btn') || t.classList.contains('copy-button'))) {
+                    copyCode(t);
+                }
+            }, false);
         </script>
         """.trimIndent()
 

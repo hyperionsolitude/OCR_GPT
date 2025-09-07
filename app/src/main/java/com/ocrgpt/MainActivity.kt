@@ -616,7 +616,7 @@ class MainActivity : AppCompatActivity() {
 
         // Process in reverse order to avoid index shifting issues
         allMatches.reversed().forEach { matchResult ->
-            val codeContent = matchResult.groupValues[1].trim()
+            val codeContent = matchResult.groupValues[1]
             val uniqueId =
                 "code-block-${codeBlockCounter++}-${System.currentTimeMillis()}-" +
                     "${(Math.random() * UNIQUE_ID_MULTIPLIER).toInt()}"
@@ -639,8 +639,21 @@ class MainActivity : AppCompatActivity() {
             processedContent = processedContent.replace(matchResult.value, codeBlockHtml)
         }
 
-        // Convert line breaks to HTML (but only for non-code content)
-        return processedContent.replace("\n", "<br>")
+        // Convert line breaks to HTML for non-code parts only
+        val codeBlockRegexHtml = Regex("(<div class=\"code-container\"[\\s\\S]*?</div>)")
+        val parts = codeBlockRegexHtml.split(processedContent)
+        val blocks = codeBlockRegexHtml.findAll(processedContent).toList()
+
+        val rebuilt = StringBuilder()
+        parts.forEachIndexed { index, part ->
+            // Replace newlines with <br> only in non-code parts
+            rebuilt.append(part.replace("\n", "<br>"))
+            if (index < blocks.size) {
+                // Append the code block untouched
+                rebuilt.append(blocks[index].value)
+            }
+        }
+        return rebuilt.toString()
     }
 
     private fun getWebViewText(webView: WebView): String =
