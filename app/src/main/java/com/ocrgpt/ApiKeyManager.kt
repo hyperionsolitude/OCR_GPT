@@ -97,20 +97,24 @@ class ApiKeyManager(
             if (index < 0 || index >= apiKeys.size) {
                 return@withLock false
             }
-            
+
             val removedKey = apiKeys.removeAt(index)
             saveApiKeys()
             Log.d(TAG, "Removed API key: ${removedKey.name}")
             true
         }
     }
-    
-    suspend fun updateApiKey(index: Int, name: String, isActive: Boolean): Boolean {
+
+    suspend fun updateApiKey(
+        index: Int,
+        name: String,
+        isActive: Boolean,
+    ): Boolean {
         return mutex.withLock {
             if (index < 0 || index >= apiKeys.size) {
                 return@withLock false
             }
-            
+
             val updatedKey = apiKeys[index].copy(name = name, isActive = isActive)
             apiKeys[index] = updatedKey
             saveApiKeys()
@@ -118,7 +122,7 @@ class ApiKeyManager(
             true
         }
     }
-    
+
     suspend fun getNextApiKey(): String? {
         return mutex.withLock {
             val activeKeys = apiKeys.filter { it.isActive }
@@ -126,32 +130,33 @@ class ApiKeyManager(
                 Log.w(TAG, "No active API keys available")
                 return@withLock null
             }
-            
+
             // Round-robin selection
             val index = currentKeyIndex.getAndIncrement() % activeKeys.size
             val selectedKey = activeKeys[index]
-            
+
             // Update usage statistics
-            val updatedKey = selectedKey.copy(
-                usageCount = selectedKey.usageCount + 1,
-                lastUsed = System.currentTimeMillis()
-            )
-            
+            val updatedKey =
+                selectedKey.copy(
+                    usageCount = selectedKey.usageCount + 1,
+                    lastUsed = System.currentTimeMillis(),
+                )
+
             val originalIndex = apiKeys.indexOfFirst { it.key == selectedKey.key }
             if (originalIndex >= 0) {
                 apiKeys[originalIndex] = updatedKey
                 saveApiKeys()
             }
-            
+
             Log.d(TAG, "Using API key: ${selectedKey.name} (usage: ${updatedKey.usageCount})")
             selectedKey.key
         }
     }
-    
+
     fun getAllApiKeys(): List<ApiKeyInfo> = apiKeys.toList()
-    
+
     fun getActiveApiKeys(): List<ApiKeyInfo> = apiKeys.filter { it.isActive }
-    
+
     suspend fun markApiKeyAsFailed(key: String) {
         mutex.withLock {
             val index = apiKeys.indexOfFirst { it.key == key }
@@ -164,7 +169,7 @@ class ApiKeyManager(
             }
         }
     }
-    
+
     suspend fun resetFailedKeys() {
         mutex.withLock {
             var hasChanges = false

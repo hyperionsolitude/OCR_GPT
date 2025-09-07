@@ -59,9 +59,11 @@ complexity:
   CyclomaticComplexMethod:
     active: false
   LargeClass:
-    active: false
+    active: true
+    threshold: 600
   LongMethod:
-    active: false
+    active: true
+    threshold: 60
   LongParameterList:
     active: true
     functionThreshold: 6
@@ -79,7 +81,10 @@ complexity:
   StringLiteralDuplication:
     active: false
   TooManyFunctions:
-    active: false
+    active: true
+    thresholdInFiles: 11
+    thresholdInClasses: 11
+    thresholdInInterfaces: 11
     ignoreDeprecated: false
     ignorePrivate: false
     ignoreOverridden: false
@@ -160,7 +165,7 @@ exceptions:
   ThrowingNewInstanceOfSameException:
     active: true
   TooGenericExceptionCaught:
-    active: true
+    active: false
     exceptionNames:
       - ArrayIndexOutOfBoundsException
       - Error
@@ -453,8 +458,8 @@ style:
     active: true
     maxChainedCalls: 5
   MaxLineLength:
-    active: false
-    maxLineLength: 120
+    active: true
+    maxLineLength: 150
     excludePackageStatements: true
     excludeImportStatements: true
     excludeCommentStatements: false
@@ -489,7 +494,7 @@ style:
   RedundantVisibilityModifierRule:
     active: true
   ReturnCount:
-    active: true
+    active: false
     max: 2
     excludedFunctions:
       - 'equals'
