@@ -58,7 +58,7 @@ jobs:
       if: always()
       with:
         name: lint-results
-        path: app/build/reports/lint-results.html
+        path: app/build/reports/lint-results-debug.html
 
   build:
     runs-on: ubuntu-latest
@@ -133,13 +133,14 @@ jobs:
           build-tools;33.0.2
           platform-tools
         
-    - name: Run security scan with CodeQL
+    - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: java, kotlin
-        
-    - name: Build project for CodeQL
-      run: ./gradlew build
-      
+        languages: java-kotlin
+        build-mode: autobuild
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
