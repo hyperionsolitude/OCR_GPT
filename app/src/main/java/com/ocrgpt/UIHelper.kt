@@ -1,0 +1,205 @@
+package com.ocrgpt
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.graphics.Bitmap
+import android.util.Log
+import android.webkit.WebView
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+class UIHelper(
+    private val context: Context,
+) {
+    companion object {
+        private const val ONE_MINUTE_MS = 60000L
+        private const val ONE_HOUR_MS = 3600000L
+        private const val ONE_DAY_MS = 86400000L
+        private const val KB_SIZE = 1024L
+        private const val MB_SIZE = 1024L * 1024L
+        private const val GB_SIZE = 1024L * 1024L * 1024L
+    }
+    fun copyToClipboard(
+        text: String,
+        label: String = "OCR Text",
+    ) {
+        try {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText(label, text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "Text copied to clipboard", Toast.LENGTH_SHORT).show()
+        } catch (e: SecurityException) {
+            Log.e("UIHelper", "Security error copying to clipboard: ${e.message}")
+            Toast.makeText(context, "Failed to copy text", Toast.LENGTH_SHORT).show()
+        } catch (e: IllegalStateException) {
+            Log.e("UIHelper", "Illegal state error copying to clipboard: ${e.message}")
+            Toast.makeText(context, "Failed to copy text", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun setWebViewContent(
+        webView: WebView,
+        content: String,
+    ) {
+        try {
+            val htmlContent = generateHtmlContent(content)
+            webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+        } catch (e: IllegalArgumentException) {
+            Log.e("UIHelper", "Invalid argument error setting WebView content: ${e.message}")
+            webView.loadData("<p>Error loading content</p>", "text/html", "UTF-8")
+        } catch (e: IllegalStateException) {
+            Log.e("UIHelper", "Illegal state error setting WebView content: ${e.message}")
+            webView.loadData("<p>Error loading content</p>", "text/html", "UTF-8")
+        }
+    }
+
+    private fun generateHtmlContent(content: String): String =
+        """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            ${generateCssStyles()}
+        </head>
+        <body>
+            <div class="container">
+                $content
+            </div>
+            ${generateJavaScript()}
+        </body>
+        </html>
+        """.trimIndent()
+
+    private fun generateCssStyles(): String = buildString {
+        append("<style>")
+        append(generateBaseStyles())
+        append(generateCodeBlockStyles())
+        append(generateTypographyStyles())
+        append("</style>")
+    }
+
+    private fun generateBaseStyles(): String =
+        """
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        """.trimIndent()
+
+    private fun generateCodeBlockStyles(): String =
+        """
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .copy-btn:hover {
+            background: #0056b3;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        """.trimIndent()
+
+    private fun generateTypographyStyles(): String =
+        """
+        h1, h2, h3, h4, h5, h6 {
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+        blockquote {
+            border-left: 4px solid #007bff;
+            margin: 15px 0;
+            padding-left: 15px;
+            color: #666;
+        }
+        """.trimIndent()
+
+
+    private fun generateJavaScript(): String =
+        """
+        <script>
+            function copyCode(button) {
+                const codeBlock = button.parentElement;
+                const text = codeBlock.querySelector('pre').textContent;
+                navigator.clipboard.writeText(text).then(function() {
+                    button.textContent = 'Copied!';
+                    setTimeout(function() {
+                        button.textContent = 'Copy';
+                    }, 2000);
+                });
+            }
+        </script>
+        """.trimIndent()
+
+    fun showToast(
+        message: String,
+        duration: Int = Toast.LENGTH_SHORT,
+    ) {
+        try {
+            Toast.makeText(context, message, duration).show()
+        } catch (e: IllegalStateException) {
+            Log.e("UIHelper", "Illegal state error showing toast: ${e.message}")
+        }
+    }
+
+    fun formatLastUsed(timestamp: Long): String {
+        val now = System.currentTimeMillis()
+        val diff = now - timestamp
+
+        return when {
+            diff < ONE_MINUTE_MS -> "Just now"
+            diff < ONE_HOUR_MS -> "${diff / ONE_MINUTE_MS}m ago"
+            diff < ONE_DAY_MS -> "${diff / ONE_HOUR_MS}h ago"
+            else -> "${diff / ONE_DAY_MS}d ago"
+        }
+    }
+
+    fun formatFileSize(bytes: Long): String =
+        when {
+            bytes < KB_SIZE -> "$bytes B"
+            bytes < MB_SIZE -> "${bytes / KB_SIZE} KB"
+            bytes < GB_SIZE -> "${bytes / MB_SIZE} MB"
+            else -> "${bytes / GB_SIZE} GB"
+        }
+}

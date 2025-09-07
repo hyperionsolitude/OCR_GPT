@@ -1,12 +1,14 @@
 package com.ocrgpt
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import androidx.activity.result.ActivityResult
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -143,6 +145,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var modelManager: ModelManager
     private lateinit var sharedPreferences: SharedPreferences
 
+    // New refactored classes
+    private lateinit var ocrProcessor: OCRProcessor
+    private lateinit var apiHandler: APIHandler
+    private lateinit var imageProcessor: ImageProcessor
+    private lateinit var uiHelper: UIHelper
+
     // Activity Result Launchers
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
@@ -178,8 +186,8 @@ class MainActivity : AppCompatActivity() {
                             "Failed to copy to clipboard: ${e.message}",
                             Toast.LENGTH_SHORT,
                         ).show()
-                } catch (e: RuntimeException) {
-                    Log.e("OCR", "Failed to copy to clipboard: ${e.message}", e)
+                } catch (e: IllegalStateException) {
+                    Log.e("OCR", "Illegal state error copying to clipboard: ${e.message}", e)
                     Toast
                         .makeText(
                             this@MainActivity,
@@ -198,27 +206,29 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Initialize managers
+        initializeManagers()
+        initializeViews()
+        setupUI()
+        setupClickListeners()
+        setupActivityResultLaunchers()
+    }
+
+    private fun initializeManagers() {
         sharedPreferences = getSharedPreferences("ocr_gpt_prefs", Context.MODE_PRIVATE)
         apiKeyManager = ApiKeyManager(this)
         modelManager = ModelManager(this)
 
+        // Initialize new refactored classes
+        ocrProcessor = OCRProcessor()
+        apiHandler = APIHandler()
+        imageProcessor = ImageProcessor(this)
+        uiHelper = UIHelper(this)
+    }
+
+    private fun initializeViews() {
         imageView = findViewById(R.id.image_preview)
         processButton = findViewById(R.id.btn_process)
         promptEditText = findViewById(R.id.et_prompt)
-        // Enable vertical scrolling in EditText
-        promptEditText.setVerticalScrollBarEnabled(true)
-        promptEditText.setMovementMethod(
-            android.text.method.ScrollingMovementMethod
-                .getInstance(),
-        )
-        // Handle nested scrolling: let EditText handle scroll if it can, otherwise let parent ScrollView handle
-        promptEditText.setOnTouchListener { v, _ ->
-            if (v.hasFocus()) {
-                v.parent.requestDisallowInterceptTouchEvent(canEditTextScrollVertically(promptEditText))
-            }
-            false
-        }
         aiResponseWebView = findViewById(R.id.tv_ai_response)
         modelSpinner = findViewById(R.id.spinner_model)
         sendToAIButton = findViewById(R.id.btn_send_ai)
@@ -226,32 +236,38 @@ class MainActivity : AppCompatActivity() {
         modeToggleButton = findViewById(R.id.btn_mode_toggle)
         clearButton = findViewById(R.id.btn_clear)
         newConversationButton = findViewById(R.id.btn_new_conversation)
-        processButton.isEnabled = false
-        sendToAIButton.isEnabled = false
-        reviewImageButton.isEnabled = false
+    }
 
-        // Setup WebViews for markdown support
+    private fun setupUI() {
+        setupEditText()
         setupWebViews()
-
-        // Setup EditText focus handling
         setupEditTextFocus()
-
-        // Setup EditText text change listener
         setupEditTextListener()
-
-        // Check for API key and initialize models
         checkApiKeyAndInitializeModels()
-
-        // Initialize model spinner
         setupModelSpinner()
+        testMLKit()
 
-        // Test UI initialization
         Log.d("OCR", "UI initialized - aiResponseWebView: $aiResponseWebView")
-
-        // Test setting text to verify WebViews work
         setWebViewContent(aiResponseWebView, "No AI response yet...")
         promptEditText.hint = "Prompt will appear here after OCR..."
 
+        processButton.isEnabled = false
+        sendToAIButton.isEnabled = false
+        reviewImageButton.isEnabled = false
+    }
+
+    private fun setupEditText() {
+        promptEditText.setVerticalScrollBarEnabled(true)
+        promptEditText.setMovementMethod(android.text.method.ScrollingMovementMethod.getInstance())
+        promptEditText.setOnTouchListener { v, _ ->
+            if (v.hasFocus()) {
+                v.parent.requestDisallowInterceptTouchEvent(canEditTextScrollVertically(promptEditText))
+            }
+            false
+        }
+    }
+
+    private fun setupClickListeners() {
         findViewById<Button>(R.id.btn_capture).setOnClickListener { takePhoto() }
         findViewById<Button>(R.id.btn_gallery).setOnClickListener { openGallery() }
         processButton.setOnClickListener { processOCR() }
@@ -260,118 +276,128 @@ class MainActivity : AppCompatActivity() {
         modeToggleButton.setOnClickListener { toggleMode() }
         newConversationButton.setOnClickListener { startNewConversation() }
         clearButton.setOnClickListener { clearAll() }
-        findViewById<Button>(
-            R.id.btn_copy_ocr,
-        ).setOnClickListener { copyToClipboard(promptEditText.text.toString(), "Prompt") }
+        findViewById<Button>(R.id.btn_copy_ocr).setOnClickListener { 
+            copyToClipboard(promptEditText.text.toString(), "Prompt") 
+        }
         findViewById<Button>(R.id.btn_copy_ai).setOnClickListener {
             copyToClipboard(getWebViewText(aiResponseWebView), "AI Response")
         }
         findViewById<Button>(R.id.btn_settings).setOnClickListener { showSettingsDialog() }
 
-        // Add long press on mode toggle to show API key settings
         modeToggleButton.setOnLongClickListener {
             showApiKeySettingsDialog()
             true
         }
+    }
 
-        // Test MLKit initialization
-        testMLKit()
 
-        // Register Activity Result Launchers
-        cameraLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                Log.d("OCR", "Camera result: ${result.resultCode}")
-                if (result.resultCode == RESULT_OK) {
-                    clearOldData()
-                    // Try multiple approaches for getting the photo URI
-                    var photoUri = currentPhotoUri
 
-                    // Check if camera returned data with URI
-                    result.data?.data?.let { dataUri ->
-                        Log.d("OCR", "Camera returned data URI: $dataUri")
-                        photoUri = dataUri
-                    }
 
-                    // If no data URI, use our prepared URI
-                    photoUri?.let { uri ->
-                        Log.d("OCR", "Camera success, launching crop with URI: $uri")
-                        try {
-                            launchCropActivity(uri)
-                        } catch (e: ActivityNotFoundException) {
-                            Log.e("OCR", "Crop activity not found", e)
-                            // Try to load image directly if crop fails
-                            loadImageFromUri(uri)
-                        } catch (e: SecurityException) {
-                            Log.e("OCR", "Permission denied for crop activity", e)
-                            // Try to load image directly if crop fails
-                            loadImageFromUri(uri)
-                        }
-                    } ?: run {
-                        Log.e("OCR", "Camera success but no photo URI available")
-                        Toast.makeText(this, "Camera error: No photo URI", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Log.d("OCR", "Camera cancelled or failed: ${result.resultCode}")
-                    Toast.makeText(this, "Camera cancelled", Toast.LENGTH_SHORT).show()
-                }
+    private fun setupActivityResultLaunchers() {
+        setupCameraLauncher()
+        setupGalleryLauncher()
+        setupCropLauncher()
+        setupPermissionLauncher()
+    }
+
+    private fun setupCameraLauncher() {
+        cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.d("OCR", "Camera result: ${result.resultCode}")
+            if (result.resultCode == RESULT_OK) {
+                handleCameraSuccess(result)
+            } else {
+                Log.d("OCR", "Camera cancelled or failed: ${result.resultCode}")
+                Toast.makeText(this, "Camera cancelled", Toast.LENGTH_SHORT).show()
             }
-        galleryLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                Log.d("OCR", "Gallery result: ${result.resultCode}")
-                if (result.resultCode == RESULT_OK) {
-                    clearOldData()
-                    val data = result.data
-                    val uri = data?.data
-                    uri?.let {
-                        Log.d("OCR", "Gallery selected URI: $uri")
-                        try {
-                            launchCropActivity(it)
-                        } catch (e: ActivityNotFoundException) {
-                            Log.e("OCR", "Crop activity not found from gallery", e)
-                            // Try to load image directly if crop fails
-                        } catch (e: SecurityException) {
-                            Log.e("OCR", "Permission denied for crop activity from gallery", e)
-                            // Try to load image directly if crop fails
-                            loadImageFromUri(it)
-                        }
-                    } ?: run {
-                        Log.e("OCR", "Gallery success but no URI in data")
-                        Toast.makeText(this, "Gallery error: No image selected", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Log.d("OCR", "Gallery cancelled: ${result.resultCode}")
-                    Toast.makeText(this, "Gallery cancelled", Toast.LENGTH_SHORT).show()
-                }
-            }
-        cropLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                val data = result.data
-                if (result.resultCode == RESULT_OK && data?.hasExtra(CustomCropActivity.EXTRA_CROPPED_URI) == true) {
-                    val croppedUriString = data.getStringExtra(CustomCropActivity.EXTRA_CROPPED_URI)
-                    croppedUriString?.let { uriString ->
-                        val uri = Uri.parse(uriString)
-                        croppedImageUri = uri
-                        loadImageFromUri(uri)
-                        updateButtonStates()
-                        Log.d("OCR", "New cropped image set: $uriString")
-                    }
-                } else {
-                    Toast.makeText(this, "Crop cancelled", Toast.LENGTH_SHORT).show()
-                    clearOldData()
-                }
-            }
+        }
+    }
 
-        // Initialize permission launcher
-        permissionLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-                if (isGranted) {
-                    Log.d("OCR", "Camera permission granted")
-                    launchCamera()
-                } else {
-                    Log.d("OCR", "Camera permission denied")
-                    Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
-                }
+    private fun handleCameraSuccess(result: ActivityResult) {
+        clearOldData()
+        var photoUri = currentPhotoUri
+
+        result.data?.data?.let { dataUri ->
+            Log.d("OCR", "Camera returned data URI: $dataUri")
+            photoUri = dataUri
+        }
+
+        photoUri?.let { uri ->
+            Log.d("OCR", "Camera success, launching crop with URI: $uri")
+            try {
+                launchCropActivity(uri)
+            } catch (e: ActivityNotFoundException) {
+                Log.e("OCR", "Crop activity not found", e)
+                loadImageFromUri(uri)
+            } catch (e: SecurityException) {
+                Log.e("OCR", "Permission denied for crop activity", e)
+                loadImageFromUri(uri)
             }
+        } ?: run {
+            Log.e("OCR", "Camera success but no photo URI available")
+            Toast.makeText(this, "Camera error: No photo URI", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupGalleryLauncher() {
+        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.d("OCR", "Gallery result: ${result.resultCode}")
+            if (result.resultCode == RESULT_OK) {
+                handleGallerySuccess(result)
+            } else {
+                Log.d("OCR", "Gallery cancelled: ${result.resultCode}")
+                Toast.makeText(this, "Gallery cancelled", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun handleGallerySuccess(result: ActivityResult) {
+        clearOldData()
+        val data = result.data
+        val uri = data?.data
+        uri?.let {
+            Log.d("OCR", "Gallery selected URI: $uri")
+            try {
+                launchCropActivity(it)
+            } catch (e: ActivityNotFoundException) {
+                Log.e("OCR", "Crop activity not found from gallery", e)
+            } catch (e: SecurityException) {
+                Log.e("OCR", "Permission denied for crop activity from gallery", e)
+                loadImageFromUri(it)
+            }
+        } ?: run {
+            Log.e("OCR", "Gallery success but no URI in data")
+            Toast.makeText(this, "Gallery error: No image selected", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupCropLauncher() {
+        cropLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            if (result.resultCode == RESULT_OK && data?.hasExtra(CustomCropActivity.EXTRA_CROPPED_URI) == true) {
+                val croppedUriString = data.getStringExtra(CustomCropActivity.EXTRA_CROPPED_URI)
+                croppedUriString?.let { uriString ->
+                    val uri = Uri.parse(uriString)
+                    croppedImageUri = uri
+                    loadImageFromUri(uri)
+                    updateButtonStates()
+                    Log.d("OCR", "New cropped image set: $uriString")
+                }
+            } else {
+                Log.d("OCR", "Crop cancelled or failed: ${result.resultCode}")
+            }
+        }
+    }
+
+    private fun setupPermissionLauncher() {
+        permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Log.d("OCR", "Camera permission granted")
+                launchCamera()
+            } else {
+                Log.d("OCR", "Camera permission denied")
+                Toast.makeText(this, "Camera permission is required to take photos", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun checkApiKeyAndInitializeModels() {
@@ -470,8 +496,8 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_LONG,
                         ).show()
                 }
-            } catch (e: RuntimeException) {
-                Log.e("OCR", "Runtime error fetching models: ${e.message}", e)
+            } catch (e: IllegalStateException) {
+                Log.e("OCR", "Illegal state error fetching models: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     useDefaultModels()
                     Toast
@@ -498,7 +524,7 @@ class MainActivity : AppCompatActivity() {
         val selectAllButton = dialogView.findViewById<Button>(R.id.btn_select_all)
         val deselectAllButton = dialogView.findViewById<Button>(R.id.btn_deselect_all)
 
-        val availableModels = modelManager.getAvailableModels()
+        val availableModels = modelManager.getModels()
         val checkboxes = mutableListOf<CheckBox>()
 
         // Create checkboxes for each model
@@ -509,13 +535,13 @@ class MainActivity : AppCompatActivity() {
             val modelIdText = modelView.findViewById<TextView>(R.id.tv_model_id)
             val categoryText = modelView.findViewById<TextView>(R.id.tv_model_category)
 
-            checkbox.isChecked = modelManager.isModelSelected(model.id)
+            checkbox.isChecked = modelManager.getModelInfo(model.id) as Boolean
             modelNameText.text = model.name
             modelIdText.text = model.id
             categoryText.text = model.category.uppercase()
 
             checkbox.setOnCheckedChangeListener { _, isChecked ->
-                modelManager.toggleModelSelection(model.id)
+                modelManager.setModelSelection(model.id)
                 updateSelectedCount(selectedCountText)
             }
 
@@ -526,13 +552,13 @@ class MainActivity : AppCompatActivity() {
         updateSelectedCount(selectedCountText)
 
         selectAllButton.setOnClickListener {
-            modelManager.selectAllModels()
+            modelManager.setModelSelection(select = true)
             checkboxes.forEach { it.isChecked = true }
             updateSelectedCount(selectedCountText)
         }
 
         deselectAllButton.setOnClickListener {
-            modelManager.deselectAllModels()
+            modelManager.setModelSelection(select = false)
             checkboxes.forEach { it.isChecked = false }
             updateSelectedCount(selectedCountText)
         }
@@ -555,7 +581,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSelectedCount(textView: TextView) {
-        val count = modelManager.getSelectedModelCount()
+        val count = (modelManager.getModelInfo() as Pair<Int, Int>).second
         textView.text = "Selected: $count models"
     }
 
@@ -777,8 +803,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 } catch (e: IOException) {
                     Log.e("OCR", "Network error testing API key ${apiKey.name}: ${e.message}")
-                } catch (e: RuntimeException) {
-                    Log.e("OCR", "Runtime error testing API key ${apiKey.name}: ${e.message}")
+                } catch (e: IllegalStateException) {
+                    Log.e("OCR", "Illegal state error testing API key ${apiKey.name}: ${e.message}")
                 }
             }
 
@@ -899,174 +925,7 @@ class MainActivity : AppCompatActivity() {
 
         // Process content to add copy buttons to code blocks
         val processedContent = addCopyButtonsToCodeBlocks(content)
-
-        val htmlContent =
-            """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body {
-                        font-family: 'Roboto', sans-serif;
-                        font-size: 14px;
-                        line-height: 1.5;
-                        color: #333;
-                        background-color: #f5f5f5;
-                        padding: 12px;
-                        margin: 0;
-                    }
-                    .code-container {
-                        position: relative;
-                        margin: 8px 0;
-                    }
-                    pre {
-                        background-color: #f8f8f8;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        padding: 8px;
-                        overflow-x: auto;
-                        font-family: 'Courier New', monospace;
-                        margin: 0;
-                    }
-                    .copy-button {
-                        position: absolute;
-                        top: 8px;
-                        right: 8px;
-                        background-color: #4CAF50;
-                        color: white;
-                        border: none;
-                        border-radius: 4px;
-                        padding: 6px 12px;
-                        font-size: 12px;
-                        cursor: pointer;
-                        z-index: 10;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                        transition: background-color 0.3s;
-                    }
-                    .copy-button:hover {
-                        background-color: #45a049;
-                    }
-                    .copy-button:active {
-                        background-color: #3d8b40;
-                    }
-                    .copy-button.copied {
-                        background-color: #2196F3;
-                    }
-                    code {
-                        background-color: #f1f1f1;
-                        padding: 2px 4px;
-                        border-radius: 3px;
-                        font-family: 'Courier New', monospace;
-                    }
-                    h1, h2, h3, h4, h5, h6 {
-                        color: #2c3e50;
-                        margin-top: 16px;
-                        margin-bottom: 8px;
-                    }
-                    ul, ol {
-                        padding-left: 20px;
-                    }
-                    blockquote {
-                        border-left: 4px solid #ddd;
-                        margin: 0;
-                        padding-left: 16px;
-                        color: #666;
-                    }
-                </style>
-            </head>
-            <body>
-                $processedContent
-                <script>
-                    function copyCodeToClipboard(button) {
-                        // Get the code from the data attribute
-                        const codeText = button.getAttribute('data-code');
-                        
-                        if (!codeText) {
-                            showCopyError(button);
-                            return;
-                        }
-                        
-                        // Decode HTML entities
-                        const cleanCodeText = codeText
-                            .replace(/&quot;/g, '"')
-                            .replace(/&#10;/g, '\\n')
-                            .replace(/&#13;/g, '\\r')
-                            .replace(/&#9;/g, '\\t');
-                        
-                        try {
-                            // Check if Android interface is available
-                            if (window.Android && typeof window.Android.copyToClipboard === 'function') {
-                                // Use native Android copy functionality
-                                window.Android.copyToClipboard(cleanCodeText);
-                                showCopySuccess(button);
-                            } else {
-                                // Fallback to WebView clipboard API
-                                fallbackCopy(button, cleanCodeText);
-                            }
-                        } catch (err) {
-                            showCopyError(button);
-                        }
-                    }
-                    
-                    function fallbackCopy(button, codeText) {
-                        try {
-                            // Create a temporary textarea element
-                            const textarea = document.createElement('textarea');
-                            textarea.value = codeText;
-                            textarea.style.position = 'fixed';
-                            textarea.style.left = '-999999px';
-                            textarea.style.top = '-999999px';
-                            document.body.appendChild(textarea);
-                            
-                            // Focus and select the text
-                            textarea.focus();
-                            textarea.select();
-                            
-                            // Try execCommand
-                            const successful = document.execCommand('copy');
-                            
-                            // Remove the temporary textarea
-                            document.body.removeChild(textarea);
-                            
-                            if (successful) {
-                                showCopySuccess(button);
-                            } else {
-                                showCopyError(button);
-                            }
-                        } catch (err) {
-                            showCopyError(button);
-                        }
-                    }
-                    
-                    function showCopySuccess(button) {
-                        const originalText = button.textContent;
-                        button.textContent = 'Copied!';
-                        button.classList.add('copied');
-                        
-                        setTimeout(() => {
-                            button.textContent = originalText;
-                            button.classList.remove('copied');
-                        }, 2000);
-                    }
-                    
-                    function showCopyError(button) {
-                        const originalText = button.textContent;
-                        button.textContent = 'Failed';
-                        button.style.backgroundColor = '#f44336';
-                        
-                        setTimeout(() => {
-                            button.textContent = originalText;
-                            button.style.backgroundColor = '#4CAF50';
-                        }, 2000);
-                    }
-                    
-                </script>
-            </body>
-            </html>
-            """.trimIndent()
-
-        webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+        uiHelper.setWebViewContent(webView, processedContent)
     }
 
     private fun addCopyButtonsToCodeBlocks(content: String): String {
@@ -1336,76 +1195,22 @@ class MainActivity : AppCompatActivity() {
         } catch (e: OutOfMemoryError) {
             Log.e("OCR", "Out of memory preprocessing image: ${e.message}", e)
             originalBitmap // Return original if preprocessing fails
-        } catch (e: RuntimeException) {
-            Log.e("OCR", "Runtime error preprocessing image: ${e.message}", e)
+        } catch (e: IllegalStateException) {
+            Log.e("OCR", "Illegal state error preprocessing image: ${e.message}", e)
             originalBitmap // Return original if preprocessing fails
         }
 
     private fun enhanceImageForOCR(bitmap: Bitmap): Bitmap {
-        try {
-            // Create a mutable copy of the bitmap
+        return try {
             val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-
-            // Get pixel data
             val pixels = IntArray(mutableBitmap.width * mutableBitmap.height)
             mutableBitmap.getPixels(pixels, 0, mutableBitmap.width, 0, 0, mutableBitmap.width, mutableBitmap.height)
 
-            // Calculate average brightness to determine if image is too dark
-            var totalBrightness = 0
-            pixels.forEach { pixel ->
-                val red = (pixel shr RED_SHIFT_BITS) and COLOR_MASK
-                val green = (pixel shr GREEN_SHIFT_BITS) and COLOR_MASK
-                val blue = pixel and COLOR_MASK
-                totalBrightness += (red + green + blue) / COLOR_CHANNELS
-            }
-            val avgBrightness = totalBrightness / pixels.size
+            val avgBrightness = calculateAverageBrightness(pixels)
+            val brightnessAdjustment = determineBrightnessAdjustment(avgBrightness)
+            val contrastAdjustment = CONTRAST_FACTOR
 
-            // Determine enhancement parameters based on average brightness
-            val brightnessAdjustment =
-                when {
-                    avgBrightness < BRIGHTNESS_THRESHOLD_LOW ->
-                        BRIGHTNESS_FACTOR_LOW // Dark image - increase brightness more
-                    avgBrightness < BRIGHTNESS_THRESHOLD_HIGH ->
-                        BRIGHTNESS_FACTOR_HIGH // Medium image - moderate increase
-                    else -> BRIGHTNESS_FACTOR_DEFAULT // Bright image - slight increase
-                }
-
-            val contrastAdjustment = CONTRAST_FACTOR // Increase contrast for better text recognition
-
-            // Enhance brightness and contrast
-            val enhancedPixels =
-                pixels
-                    .map { pixel ->
-                        val alpha = (pixel shr ALPHA_SHIFT) and COLOR_MASK
-                        val red = (pixel shr RED_SHIFT) and COLOR_MASK
-                        val green = (pixel shr GREEN_SHIFT) and COLOR_MASK
-                        val blue = pixel and COLOR_MASK
-
-                        // Convert to grayscale for better OCR
-                        val gray = (
-                            red * GRAYSCALE_RED_WEIGHT + green * GRAYSCALE_GREEN_WEIGHT +
-                                blue * GRAYSCALE_BLUE_WEIGHT
-                            ).toInt()
-
-                        // Apply brightness and contrast enhancement
-                        val adjustedGray = (
-                            (gray - GRAYSCALE_OFFSET) * contrastAdjustment +
-                                GRAYSCALE_OFFSET
-                            ).toInt()
-                        val enhancedGray = (adjustedGray * brightnessAdjustment).toInt().coerceIn(0, MAX_COLOR_VALUE)
-
-                        // For monitor captures, maintain some color information but enhance contrast
-                        val enhancedRed = (red * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET)
-                            .toInt().coerceIn(0, MAX_COLOR_VALUE)
-                        val enhancedGreen = (green * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET)
-                            .toInt().coerceIn(0, MAX_COLOR_VALUE)
-                        val enhancedBlue = (blue * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET)
-                            .toInt().coerceIn(0, MAX_COLOR_VALUE)
-
-                        (alpha shl ALPHA_SHIFT) or (enhancedRed shl RED_SHIFT) or
-                            (enhancedGreen shl GREEN_SHIFT) or enhancedBlue
-                    }.toIntArray()
-
+            val enhancedPixels = enhancePixels(pixels, brightnessAdjustment, contrastAdjustment)
             mutableBitmap.setPixels(
                 enhancedPixels,
                 0,
@@ -1421,16 +1226,57 @@ class MainActivity : AppCompatActivity() {
                 "Image enhanced - Original avg brightness: $avgBrightness, " +
                     "Brightness adjustment: $brightnessAdjustment",
             )
-
-            return mutableBitmap
+            mutableBitmap
         } catch (e: OutOfMemoryError) {
             Log.e("OCR", "Out of memory enhancing image: ${e.message}", e)
-            return bitmap // Return original if enhancement fails
-        } catch (e: RuntimeException) {
-            Log.e("OCR", "Runtime error enhancing image: ${e.message}", e)
-            return bitmap // Return original if enhancement fails
+            bitmap
+        } catch (e: IllegalStateException) {
+            Log.e("OCR", "Illegal state error enhancing image: ${e.message}", e)
+            bitmap
         }
     }
+
+    private fun calculateAverageBrightness(pixels: IntArray): Int {
+        var totalBrightness = 0
+        pixels.forEach { pixel ->
+            val red = (pixel shr RED_SHIFT_BITS) and COLOR_MASK
+            val green = (pixel shr GREEN_SHIFT_BITS) and COLOR_MASK
+            val blue = pixel and COLOR_MASK
+            totalBrightness += (red + green + blue) / COLOR_CHANNELS
+        }
+        return totalBrightness / pixels.size
+    }
+
+    private fun determineBrightnessAdjustment(avgBrightness: Int): Float =
+        when {
+            avgBrightness < BRIGHTNESS_THRESHOLD_LOW -> BRIGHTNESS_FACTOR_LOW
+            avgBrightness < BRIGHTNESS_THRESHOLD_HIGH -> BRIGHTNESS_FACTOR_HIGH
+            else -> BRIGHTNESS_FACTOR_DEFAULT
+        }
+
+    private fun enhancePixels(pixels: IntArray, brightnessAdjustment: Float, contrastAdjustment: Float): IntArray =
+        pixels.map { pixel ->
+            val alpha = (pixel shr ALPHA_SHIFT) and COLOR_MASK
+            val red = (pixel shr RED_SHIFT) and COLOR_MASK
+            val green = (pixel shr GREEN_SHIFT) and COLOR_MASK
+            val blue = pixel and COLOR_MASK
+
+            val gray =
+                (red * GRAYSCALE_RED_WEIGHT + green * GRAYSCALE_GREEN_WEIGHT + blue * GRAYSCALE_BLUE_WEIGHT).toInt()
+            val adjustedGray =
+                ((gray - GRAYSCALE_OFFSET) * contrastAdjustment + GRAYSCALE_OFFSET).toInt()
+            val enhancedGray =
+                (adjustedGray * brightnessAdjustment).toInt().coerceIn(0, MAX_COLOR_VALUE)
+
+            val enhancedRed =
+                (red * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
+            val enhancedGreen =
+                (green * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
+            val enhancedBlue =
+                (blue * ENHANCEMENT_FACTOR + enhancedGray * ENHANCEMENT_OFFSET).toInt().coerceIn(0, MAX_COLOR_VALUE)
+
+            (alpha shl ALPHA_SHIFT) or (enhancedRed shl RED_SHIFT) or (enhancedGreen shl GREEN_SHIFT) or enhancedBlue
+        }.toIntArray()
 
     private fun testMLKit() {
         Log.d("OCR", "Testing MLKit initialization...")
@@ -1438,7 +1284,7 @@ class MainActivity : AppCompatActivity() {
             TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
             Log.d("OCR", "MLKit TextRecognizer created successfully")
             Toast.makeText(this, "MLKit initialized successfully", Toast.LENGTH_SHORT).show()
-        } catch (e: RuntimeException) {
+        } catch (e: IllegalStateException) {
             Log.e("OCR", "MLKit initialization failed: ${e.message}", e)
             Toast.makeText(this, "MLKit initialization failed: ${e.message}", Toast.LENGTH_SHORT).show()
         } catch (e: SecurityException) {
@@ -1508,76 +1354,90 @@ class MainActivity : AppCompatActivity() {
                 recognizer
                     .process(image)
                     .addOnSuccessListener { visionText ->
-                        val extractedText = visionText.text
-                        Log.d("OCR", "OCR completed successfully")
-                        Log.d("OCR", "Extracted text length: ${extractedText.length}")
-                        Log.d("OCR", "Extracted text: '$extractedText'")
-
-                        runOnUiThread {
-                            hideProgressIndicator()
-                            if (extractedText.isNotEmpty()) {
-                                Log.d("OCR", "Updating UI with extracted text")
-                                Log.d("OCR", "Text to set: '$extractedText'")
-
-                                // Build the full prompt (matching original Python app)
-                                val rules =
-                                    """
-Please answer the following question in English. Provide a compact step-by-step solution or reasoning, 
-but for the final answer, use the format 'a = <answer>' (e.g., a = 5). Do not use verbose explanations, 
-boxed math, or LaTeX for the answer. Only provide the answer in the specified format at the end.
-After giving the answer, if possible, provide the Python code that solves the problem, formatted as a code block.
-                                    """.trimIndent()
-
-                                currentPrompt = "$rules\n\n```\n${extractedText.trim()}\n```"
-                                promptEditText.setText(currentPrompt)
-                                updateButtonStates()
-
-                                Toast
-                                    .makeText(
-                                        this@MainActivity,
-                                        "Text extracted successfully!",
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                Log.d("OCR", "UI updated with full prompt")
-                                Log.d("OCR", "Current prompt: '$currentPrompt'")
-                            } else {
-                                Log.w("OCR", "No text found in image")
-                                promptEditText.setText(
-                                    "No text found in the image. Try:\n- Using a clearer image\n" +
-                                        "- Ensuring text is well-lit\n- Checking text orientation",
-                                )
-                                updateButtonStates()
-                                Toast.makeText(this@MainActivity, "No text found in image", Toast.LENGTH_SHORT).show()
-                                Log.d("OCR", "Set 'no text found' message")
-                            }
-                        }
+                        handleOCRSuccess(visionText.text)
                     }.addOnFailureListener { e ->
-                        Log.e("OCR", "OCR failed: ${e.message}", e)
-                        runOnUiThread {
-                            hideProgressIndicator()
-                            setWebViewContent(
-                                aiResponseWebView,
-                                "OCR failed: ${e.message}\n\nPossible issues:\n- Check internet connection\n" +
-                                    "- Try a different image\n- Ensure image has clear text",
-                            )
-                            updateButtonStates()
-                            Toast.makeText(this@MainActivity, "OCR processing failed", Toast.LENGTH_SHORT).show()
-                        }
+                        handleOCRFailure(e)
                     }
-            } catch (e: RuntimeException) {
-                Log.e("OCR", "Runtime error creating InputImage: ${e.message}", e)
-                runOnUiThread {
-                    hideProgressIndicator()
-                    setWebViewContent(aiResponseWebView, "Error processing image: ${e.message}")
-                    updateButtonStates()
-                    Toast.makeText(this@MainActivity, "Error processing image", Toast.LENGTH_SHORT).show()
-                }
+            } catch (e: IllegalStateException) {
+                handleOCRException(e)
             }
         } ?: run {
             Log.w("OCR", "No bitmap available for OCR")
             runOnUiThread {
                 Toast.makeText(this, "No image to process", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun handleOCRSuccess(extractedText: String) {
+        Log.d("OCR", "OCR completed successfully")
+        Log.d("OCR", "Extracted text length: ${extractedText.length}")
+        Log.d("OCR", "Extracted text: '$extractedText'")
+
+        runOnUiThread {
+            hideProgressIndicator()
+            if (extractedText.isNotEmpty()) {
+                updateUIWithExtractedText(extractedText)
+            } else {
+                updateUIWithNoTextFound()
+            }
+        }
+    }
+
+    private fun updateUIWithExtractedText(extractedText: String) {
+        Log.d("OCR", "Updating UI with extracted text")
+        Log.d("OCR", "Text to set: '$extractedText'")
+
+        val rules = buildOCRRules()
+        currentPrompt = "$rules\n\n```\n${extractedText.trim()}\n```"
+        promptEditText.setText(currentPrompt)
+        updateButtonStates()
+
+        Toast.makeText(this@MainActivity, "Text extracted successfully!", Toast.LENGTH_SHORT).show()
+        Log.d("OCR", "UI updated with full prompt")
+        Log.d("OCR", "Current prompt: '$currentPrompt'")
+    }
+
+    private fun updateUIWithNoTextFound() {
+        Log.w("OCR", "No text found in image")
+        promptEditText.setText(
+            "No text found in the image. Try:\n- Using a clearer image\n" +
+                "- Ensuring text is well-lit\n- Checking text orientation",
+        )
+        updateButtonStates()
+        Toast.makeText(this@MainActivity, "No text found in image", Toast.LENGTH_SHORT).show()
+        Log.d("OCR", "Set 'no text found' message")
+    }
+
+    private fun buildOCRRules(): String =
+        """
+        Please answer the following question in English. Provide a compact step-by-step solution or reasoning, 
+        but for the final answer, use the format 'a = <answer>' (e.g., a = 5). Do not use verbose explanations, 
+        boxed math, or LaTeX for the answer. Only provide the answer in the specified format at the end.
+        After giving the answer, if possible, provide the Python code that solves the problem, formatted as a code block.
+        """.trimIndent()
+
+    private fun handleOCRFailure(e: Exception) {
+        Log.e("OCR", "OCR failed: ${e.message}", e)
+        runOnUiThread {
+            hideProgressIndicator()
+            setWebViewContent(
+                aiResponseWebView,
+                "OCR failed: ${e.message}\n\nPossible issues:\n- Check internet connection\n" +
+                    "- Try a different image\n- Ensure image has clear text",
+            )
+            updateButtonStates()
+            Toast.makeText(this@MainActivity, "OCR processing failed", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleOCRException(e: IllegalStateException) {
+        Log.e("OCR", "Illegal state error creating InputImage: ${e.message}", e)
+        runOnUiThread {
+            hideProgressIndicator()
+            setWebViewContent(aiResponseWebView, "Error processing image: ${e.message}")
+            updateButtonStates()
+            Toast.makeText(this@MainActivity, "Error processing image", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1616,7 +1476,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
 
             // Check if "All Models" is selected
             val selectedModelPosition = modelSpinner.selectedItemPosition
-            val modelNames = (modelManager.getSelectedModels().map { it.name } + "All Models").toTypedArray()
+            val modelNames = (modelManager.getModels(true).map { it.name } + "All Models").toTypedArray()
 
             if (selectedModelPosition >= 0 && modelNames[selectedModelPosition] == "All Models") {
                 processWithAllModels(finalPrompt)
@@ -1667,8 +1527,8 @@ After giving the answer, if possible, provide the Python code that solves the pr
                     setWebViewContent(aiResponseWebView, "Network error: ${e.message}")
                     Toast.makeText(this@MainActivity, "Network error", Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: RuntimeException) {
-                Log.e("OCR", "Runtime error in AI processing: ${e.message}", e)
+            } catch (e: IllegalStateException) {
+                Log.e("OCR", "Illegal state error in AI processing: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     hideProgressIndicator()
                     setWebViewContent(aiResponseWebView, "AI processing failed: ${e.message}")
@@ -1681,97 +1541,95 @@ After giving the answer, if possible, provide the Python code that solves the pr
     private fun processWithAllModels(prompt: String) {
         Log.d("OCR", "Starting processing with all models: '$prompt'")
         isProcessingAllModels = true
-
-        // Clear previous responses
         modelResponses.clear()
 
+        setupAllModelsUI()
+        processAllModelsAsync(prompt)
+    }
+
+    private fun setupAllModelsUI() {
         runOnUiThread {
-            val selectedModels = modelManager.getSelectedModels()
+            val selectedModels = modelManager.getModels(true)
             setWebViewContent(
                 aiResponseWebView,
                 "Processing with all models...\n\nPlease wait while we get responses from all models.\n\n" +
-                    "Models being processed:\n${selectedModels.joinToString(
-                        "\n",
-                    ) { "• ${it.name}" }}",
+                    "Models being processed:\n${selectedModels.joinToString("\n") { "• ${it.name}" }}",
             )
             Log.d("OCR", "Set AI UI to 'Processing with all models...'")
         }
+    }
 
+    private fun processAllModelsAsync(prompt: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val jobs = mutableListOf<Job>()
-
-                // Send requests to all selected models concurrently
-                val selectedModels = modelManager.getSelectedModels()
-                selectedModels.forEach { model ->
-                    val job =
-                        launch {
-                            try {
-                                val response = sendToGroqAPIWithModel(prompt, model.id)
-                                modelResponses[model.name] = response
-                                Log.d("OCR", "Response from ${model.name}: $response")
-
-                                // Update progress on UI
-                                withContext(Dispatchers.Main) {
-                                    updateAllModelsProgress()
-                                }
-                            } catch (e: IOException) {
-                                modelResponses[model.name] = "Network error: ${e.message}"
-                                Log.e("OCR", "Network error getting response from ${model.name}: ${e.message}", e)
-                            } catch (e: RuntimeException) {
-                                modelResponses[model.name] = "Error: ${e.message}"
-                                Log.e("OCR", "Runtime error getting response from ${model.name}: ${e.message}", e)
-
-                                // Update progress on UI even for errors
-                                withContext(Dispatchers.Main) {
-                                    updateAllModelsProgress()
-                                }
-                            }
-                        }
-                    jobs.add(job)
-                }
-
-                // Wait for all responses
+                val jobs = processAllModelsConcurrently(prompt)
                 jobs.joinAll()
-
-                // Add conversation history for all models mode
-                if (isConversationMode) {
-                    conversationHistory.add(ConversationMessage("user", prompt))
-                    // For all models, we'll add a combined response
-                    val combinedResponse = modelResponses.values.joinToString("\n\n---\n\n") { it }
-                    conversationHistory.add(ConversationMessage("assistant", combinedResponse))
-                    Log.d(
-                        "OCR",
-                        "Added all models conversation to history. Total messages: ${conversationHistory.size}",
-                    )
-                    updateConversationStatus()
-                }
-
-                withContext(Dispatchers.Main) {
-                    isProcessingAllModels = false
-                    displayAllModelsResponse()
-                    Log.d("OCR", "All models processing completed")
-                }
+                handleAllModelsCompletion(prompt)
             } catch (e: IOException) {
-                Log.e("OCR", "Network error in all models processing: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    isProcessingAllModels = false
-                    setWebViewContent(aiResponseWebView, "Network error: ${e.message}")
-                }
-            } catch (e: RuntimeException) {
-                Log.e("OCR", "Runtime error in all models processing: ${e.message}", e)
-                withContext(Dispatchers.Main) {
-                    isProcessingAllModels = false
-                    setWebViewContent(aiResponseWebView, "All models processing failed: ${e.message}")
+                handleAllModelsError("Network error in all models processing: ${e.message}")
+            } catch (e: IllegalStateException) {
+                handleAllModelsError("Illegal state error in all models processing: ${e.message}")
+            }
+        }
+    }
+
+    private fun processAllModelsConcurrently(prompt: String): List<Job> {
+        val jobs = mutableListOf<Job>()
+        val selectedModels = modelManager.getModels(true)
+
+        selectedModels.forEach { model ->
+            val job = CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val response = sendToGroqAPIWithModel(prompt, model.id)
+                    modelResponses[model.name] = response
+                    Log.d("OCR", "Response from ${model.name}: $response")
+                    withContext(Dispatchers.Main) { updateAllModelsProgress() }
+                } catch (e: IOException) {
+                    modelResponses[model.name] = "Network error: ${e.message}"
+                    Log.e("OCR", "Network error getting response from ${model.name}: ${e.message}", e)
+                } catch (e: IllegalStateException) {
+                    modelResponses[model.name] = "Error: ${e.message}"
+                    Log.e("OCR", "Illegal state error getting response from ${model.name}: ${e.message}", e)
+                    withContext(Dispatchers.Main) { updateAllModelsProgress() }
                 }
             }
+            jobs.add(job)
+        }
+        return jobs
+    }
+
+    private suspend fun handleAllModelsCompletion(prompt: String) {
+        if (isConversationMode) {
+            addAllModelsToConversationHistory(prompt)
+        }
+
+        withContext(Dispatchers.Main) {
+            isProcessingAllModels = false
+            displayAllModelsResponse()
+            Log.d("OCR", "All models processing completed")
+        }
+    }
+
+    private fun addAllModelsToConversationHistory(prompt: String) {
+        conversationHistory.add(ConversationMessage("user", prompt))
+        val combinedResponse = modelResponses.values.joinToString("\n\n---\n\n") { it }
+        conversationHistory.add(ConversationMessage("assistant", combinedResponse))
+        Log.d("OCR", "Added all models conversation to history. Total messages: ${conversationHistory.size}")
+        updateConversationStatus()
+    }
+
+    private suspend fun handleAllModelsError(errorMessage: String) {
+        Log.e("OCR", errorMessage)
+        withContext(Dispatchers.Main) {
+            isProcessingAllModels = false
+            setWebViewContent(aiResponseWebView, errorMessage.substringAfter(": "))
         }
     }
 
     private fun updateAllModelsProgress() {
         if (!isProcessingAllModels) return
 
-        val selectedModels = modelManager.getSelectedModels()
+        val selectedModels = modelManager.getModels(true)
         val completedCount = modelResponses.size
         val totalCount = selectedModels.size
         val progressText = StringBuilder()
@@ -1793,7 +1651,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
         val responseBuilder = StringBuilder()
         responseBuilder.append("## All Models Response\n\n")
 
-        val selectedModels = modelManager.getSelectedModels()
+        val selectedModels = modelManager.getModels(true)
         selectedModels.forEach { model ->
             val response = modelResponses[model.name] ?: "No response received"
             responseBuilder.append("### ${model.name}\n")
@@ -1808,7 +1666,7 @@ After giving the answer, if possible, provide the Python code that solves the pr
     private suspend fun sendToGroqAPI(prompt: String): String {
         return withContext(Dispatchers.IO) {
             // Get selected model
-            val selectedModels = modelManager.getSelectedModels()
+            val selectedModels = modelManager.getModels(true)
             val selectedModel = if (selectedModels.isNotEmpty()) selectedModels.first().id else "gemma2-9b-it"
 
             Log.d("OCR", "Using AI model: $selectedModel")
@@ -1824,115 +1682,135 @@ After giving the answer, if possible, provide the Python code that solves the pr
     ): String {
         return withContext(Dispatchers.IO) {
             val client = OkHttpClient()
-
             Log.d("OCR", "Using AI model: $model")
             Log.d("OCR", "Full prompt being sent to AI: '$prompt'")
 
-            // Build messages array with conversation context
-            val messagesArray = JSONArray()
-
-            // Add system message to ensure English responses unless specifically requested otherwise
-            messagesArray.put(
-                JSONObject().apply {
-                    put("role", "system")
-                    put(
-                        "content",
-                        "You are a helpful AI assistant. Please respond in English by default. " +
-                            "Only respond in Arabic or other languages if the user explicitly asks you to do so " +
-                            "or if the question is specifically about Arabic language/culture. " +
-                            "For all other queries, provide clear and helpful responses in English.",
-                    )
-                },
-            )
-
-            if (isConversationMode && conversationHistory.isNotEmpty()) {
-                // Add conversation history to provide context
-                conversationHistory.forEach { message ->
-                    messagesArray.put(
-                        JSONObject().apply {
-                            put("role", message.role)
-                            put("content", message.content)
-                        },
-                    )
-                }
-                // Add the current user message
-                messagesArray.put(
-                    JSONObject().apply {
-                        put("role", "user")
-                        put("content", prompt)
-                    },
-                )
-                Log.d("OCR", "Including conversation history: ${conversationHistory.size} messages + current message")
-            } else {
-                // Single message mode (original behavior)
-                messagesArray.put(
-                    JSONObject().apply {
-                        put("role", "user")
-                        put("content", prompt)
-                    },
-                )
-            }
-
-            val jsonBody =
-                JSONObject()
-                    .apply {
-                        put("model", model)
-                        put("messages", messagesArray)
-                        // Use different parameters based on model (matching original Python app)
-                        when (model) {
-                            "llama-3.3-70b-versatile" -> {
-                                put("temperature", 1.0)
-                                put("max_tokens", MAX_REQUEST_SIZE)
-                                put("top_p", 1.0)
-                            }
-                            "mistral-saba-24b" -> {
-                                put("temperature", 1.0)
-                                put("max_tokens", MAX_REQUEST_SIZE)
-                                put("top_p", 1.0)
-                            }
-                            else -> {
-                                put("temperature", TIMEOUT_FACTOR)
-                                put("max_tokens", MAX_TOKENS)
-                                put("top_p", TEMPERATURE)
-                            }
-                        }
-                    }.toString()
-
+            val messagesArray = buildMessagesArray(prompt)
+            val jsonBody = buildRequestJson(model, messagesArray)
             val apiKey = apiKeyManager.getNextApiKey()
+
             if (apiKey == null) {
                 return@withContext "Error: No active API keys available"
             }
 
-            val request =
-                Request
-                    .Builder()
-                    .url("https://api.groq.com/openai/v1/chat/completions")
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .addHeader("Content-Type", "application/json")
-                    .post(jsonBody.toRequestBody("application/json".toMediaType()))
-                    .build()
+            val request = buildGroqRequest(apiKey, jsonBody)
+            executeGroqRequest(client, request)
+        }
+    }
 
-            try {
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: "No response"
+    private fun buildMessagesArray(prompt: String): JSONArray {
+        val messagesArray = JSONArray()
 
-                if (response.isSuccessful) {
-                    val jsonResponse = JSONObject(responseBody)
-                    val choices = jsonResponse.getJSONArray("choices")
-                    if (choices.length() > 0) {
-                        val message = choices.getJSONObject(0).getJSONObject("message")
-                        return@withContext message.getString("content")
-                    }
-                }
-                return@withContext "Error: ${response.code} - $responseBody"
-            } catch (e: IOException) {
-                return@withContext "Network error: ${e.message}"
+        // Add system message
+        messagesArray.put(
+            JSONObject().apply {
+                put("role", "system")
+                put(
+                    "content",
+                    "You are a helpful AI assistant. Please respond in English by default. " +
+                        "Only respond in Arabic or other languages if the user explicitly asks you to do so " +
+                        "or if the question is specifically about Arabic language/culture. " +
+                        "For all other queries, provide clear and helpful responses in English.",
+                )
+            },
+        )
+
+        if (isConversationMode && conversationHistory.isNotEmpty()) {
+            addConversationHistory(messagesArray, prompt)
+        } else {
+            addSingleMessage(messagesArray, prompt)
+        }
+
+        return messagesArray
+    }
+
+    private fun addConversationHistory(messagesArray: JSONArray, prompt: String) {
+        conversationHistory.forEach { message ->
+            messagesArray.put(
+                JSONObject().apply {
+                    put("role", message.role)
+                    put("content", message.content)
+                },
+            )
+        }
+        addSingleMessage(messagesArray, prompt)
+        Log.d("OCR", "Including conversation history: ${conversationHistory.size} messages + current message")
+    }
+
+    private fun addSingleMessage(messagesArray: JSONArray, prompt: String) {
+        messagesArray.put(
+            JSONObject().apply {
+                put("role", "user")
+                put("content", prompt)
+            },
+        )
+    }
+
+    private fun buildRequestJson(model: String, messagesArray: JSONArray): String =
+        JSONObject()
+            .apply {
+                put("model", model)
+                put("messages", messagesArray)
+                addModelParameters(this, model)
+            }.toString()
+
+    private fun addModelParameters(jsonObject: JSONObject, model: String) {
+        when (model) {
+            "llama-3.3-70b-versatile" -> {
+                jsonObject.put("temperature", 1.0)
+                jsonObject.put("max_tokens", MAX_REQUEST_SIZE)
+                jsonObject.put("top_p", 1.0)
+            }
+            "mistral-saba-24b" -> {
+                jsonObject.put("temperature", 1.0)
+                jsonObject.put("max_tokens", MAX_REQUEST_SIZE)
+                jsonObject.put("top_p", 1.0)
+            }
+            else -> {
+                jsonObject.put("temperature", TIMEOUT_FACTOR)
+                jsonObject.put("max_tokens", MAX_TOKENS)
+                jsonObject.put("top_p", TEMPERATURE)
             }
         }
     }
 
+    private fun buildGroqRequest(apiKey: String, jsonBody: String): Request =
+        Request
+            .Builder()
+            .url("https://api.groq.com/openai/v1/chat/completions")
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Content-Type", "application/json")
+            .post(jsonBody.toRequestBody("application/json".toMediaType()))
+            .build()
+
+    private fun executeGroqRequest(client: OkHttpClient, request: Request): String {
+        return try {
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: "No response"
+
+            if (response.isSuccessful) {
+                parseGroqResponse(responseBody)
+            } else {
+                "Error: ${response.code} - $responseBody"
+            }
+        } catch (e: IOException) {
+            "Network error: ${e.message}"
+        }
+    }
+
+    private fun parseGroqResponse(responseBody: String): String {
+        val jsonResponse = JSONObject(responseBody)
+        val choices = jsonResponse.getJSONArray("choices")
+        return if (choices.length() > 0) {
+            val message = choices.getJSONObject(0).getJSONObject("message")
+            message.getString("content")
+        } else {
+            "No response generated"
+        }
+    }
+
     private fun setupModelSpinner() {
-        val selectedModels = modelManager.getSelectedModels()
+        val selectedModels = modelManager.getModels(true)
         val modelNames = (selectedModels.map { it.name } + "All Models" + "Manage Models").toTypedArray()
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modelNames)
@@ -2140,7 +2018,10 @@ After giving the answer, if possible, provide the Python code that solves the pr
             // Chat Mode: Process button disabled, Send to AI enabled when user types something
             processButton.isEnabled = false
             sendToAIButton.isEnabled = promptEditText.text.isNotEmpty() &&
-                promptEditText.text.toString().trim().isNotEmpty()
+                promptEditText.text
+                    .toString()
+                    .trim()
+                    .isNotEmpty()
             reviewImageButton.isEnabled = false
         }
 
@@ -2200,9 +2081,5 @@ After giving the answer, if possible, provide the Python code that solves the pr
         currentBitmap = null
         modelResponses.clear()
         conversationHistory.clear()
-    }
-
-    companion object {
-        // No constants needed
     }
 }

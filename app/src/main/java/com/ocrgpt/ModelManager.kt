@@ -8,7 +8,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
+import java.io.IOException
 
 data class ModelInfo(
     val id: String,
@@ -53,8 +55,8 @@ class ModelManager(
                 }
             } catch (e: JSONException) {
                 Log.e(TAG, "JSON error loading selected models", e)
-            } catch (e: RuntimeException) {
-                Log.e(TAG, "Runtime error loading selected models", e)
+            } catch (e: IllegalStateException) {
+                Log.e(TAG, "Illegal state error loading selected models", e)
             }
         }
         Log.d(TAG, "Loaded ${selectedModels.size} selected models")
@@ -125,8 +127,8 @@ class ModelManager(
             } catch (e: IOException) {
                 Log.e(TAG, "Network error fetching models: ${e.message}", e)
                 useDefaultModels()
-            } catch (e: RuntimeException) {
-                Log.e(TAG, "Runtime error fetching models: ${e.message}", e)
+            } catch (e: IllegalStateException) {
+                Log.e(TAG, "Illegal state error fetching models: ${e.message}", e)
                 useDefaultModels()
             }
         }
@@ -192,42 +194,49 @@ class ModelManager(
         return DEFAULT_MODELS
     }
 
-    fun getAvailableModels(): List<ModelInfo> = availableModels.toList()
-
-    fun getSelectedModels(): List<ModelInfo> = availableModels.filter { selectedModels.contains(it.id) }
+    fun getModels(selectedOnly: Boolean = false): List<ModelInfo> = 
+        if (selectedOnly) {
+            availableModels.filter { selectedModels.contains(it.id) }
+        } else {
+            availableModels.toList()
+        }
 
     fun getSelectedModelIds(): List<String> = selectedModels.toList()
 
-    fun toggleModelSelection(modelId: String): Boolean =
-        if (selectedModels.contains(modelId)) {
-            selectedModels.remove(modelId)
-            saveSelectedModels()
-            Log.d(TAG, "Deselected model: $modelId")
-            false
+    fun setModelSelection(modelId: String? = null, select: Boolean? = null): Boolean {
+        return if (modelId != null) {
+            // Toggle single model
+            if (selectedModels.contains(modelId)) {
+                selectedModels.remove(modelId)
+                saveSelectedModels()
+                Log.d(TAG, "Deselected model: $modelId")
+                false
+            } else {
+                selectedModels.add(modelId)
+                saveSelectedModels()
+                Log.d(TAG, "Selected model: $modelId")
+                true
+            }
         } else {
-            selectedModels.add(modelId)
+            // Set all models
+            if (select == true) {
+                availableModels.forEach { model ->
+                    selectedModels.add(model.id)
+                }
+                Log.d(TAG, "Selected all models")
+            } else {
+                selectedModels.clear()
+                Log.d(TAG, "Deselected all models")
+            }
             saveSelectedModels()
-            Log.d(TAG, "Selected model: $modelId")
-            true
+            select ?: false
         }
-
-    fun selectAllModels() {
-        availableModels.forEach { model ->
-            selectedModels.add(model.id)
-        }
-        saveSelectedModels()
-        Log.d(TAG, "Selected all models")
     }
 
-    fun deselectAllModels() {
-        selectedModels.clear()
-        saveSelectedModels()
-        Log.d(TAG, "Deselected all models")
-    }
-
-    fun isModelSelected(modelId: String): Boolean = selectedModels.contains(modelId)
-
-    fun getModelCount(): Int = availableModels.size
-
-    fun getSelectedModelCount(): Int = selectedModels.size
+    fun getModelInfo(modelId: String? = null): Any = 
+        if (modelId != null) {
+            selectedModels.contains(modelId)
+        } else {
+            Pair(availableModels.size, selectedModels.size)
+        }
 }

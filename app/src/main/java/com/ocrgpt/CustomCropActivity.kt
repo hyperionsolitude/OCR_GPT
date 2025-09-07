@@ -136,7 +136,7 @@ class CustomCropActivity : AppCompatActivity() {
     }
 
     private fun fixImageOrientation(bitmap: Bitmap): Bitmap {
-        try {
+        return try {
             val inputStream = contentResolver.openInputStream(imageUri!!)
             val exif =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
@@ -172,17 +172,17 @@ class CustomCropActivity : AppCompatActivity() {
                 }
             }
 
-            return if (matrix.isIdentity) {
+            if (matrix.isIdentity) {
                 bitmap
             } else {
                 Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
             }
         } catch (e: IOException) {
             Log.e("CustomCrop", "Error fixing image orientation", e)
-            return bitmap
+            bitmap
         } catch (e: OutOfMemoryError) {
             Log.e("CustomCrop", "Out of memory fixing image orientation", e)
-            return bitmap
+            bitmap
         }
     }
 
@@ -205,72 +205,13 @@ class CustomCropActivity : AppCompatActivity() {
                 return
             }
 
-            // Load the original high-resolution image for cropping
             val originalHighResBitmap = loadOriginalImage()
             if (originalHighResBitmap == null) {
                 Toast.makeText(this, "Error loading original image for cropping", Toast.LENGTH_SHORT).show()
                 return
             }
 
-            // Get the actual image bounds within the ImageView (accounting for fitCenter scaling)
-            val imageBounds = getImageBoundsInView()
-            Log.d("CustomCrop", "Image bounds in view: $imageBounds")
-            Log.d("CustomCrop", "Crop rect in overlay: $cropRect")
-
-            // Calculate the actual crop rectangle in original bitmap coordinates
-            val originalWidth = originalHighResBitmap.width
-            val originalHeight = originalHighResBitmap.height
-
-            // Map crop rectangle from overlay coordinates to image coordinates
-            val imageLeft = (cropRect.left - imageBounds.left) / imageBounds.width() * originalWidth
-            val imageTop = (cropRect.top - imageBounds.top) / imageBounds.height() * originalHeight
-            val imageRight = (cropRect.right - imageBounds.left) / imageBounds.width() * originalWidth
-            val imageBottom = (cropRect.bottom - imageBounds.top) / imageBounds.height() * originalHeight
-
-            val actualCropRect =
-                Rect(
-                    imageLeft.toInt(),
-                    imageTop.toInt(),
-                    imageRight.toInt(),
-                    imageBottom.toInt(),
-                )
-
-            // Ensure the crop rectangle is within bounds
-            actualCropRect.left = actualCropRect.left.coerceIn(0, originalWidth)
-            actualCropRect.top = actualCropRect.top.coerceIn(0, originalHeight)
-            actualCropRect.right = actualCropRect.right.coerceIn(actualCropRect.left, originalWidth)
-            actualCropRect.bottom = actualCropRect.bottom.coerceIn(actualCropRect.top, originalHeight)
-
-            Log.d("CustomCrop", "Original image: ${originalWidth}x$originalHeight")
-            Log.d(
-                "CustomCrop",
-                "Final crop rect: ${actualCropRect.width()}x${actualCropRect.height()} " +
-                    "at (${actualCropRect.left},${actualCropRect.top})",
-            )
-
-            // Perform the crop
-            val croppedBitmap =
-                Bitmap.createBitmap(
-                    originalHighResBitmap,
-                    actualCropRect.left,
-                    actualCropRect.top,
-                    actualCropRect.width(),
-                    actualCropRect.height(),
-                )
-
-            // Save the cropped image
-            val croppedFile = File(cacheDir, "custom_cropped_${System.currentTimeMillis()}.jpg")
-            val outputStream = FileOutputStream(croppedFile)
-            croppedBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
-            outputStream.close()
-
-            val croppedUri = Uri.fromFile(croppedFile)
-            val resultIntent =
-                Intent().apply {
-                    putExtra(EXTRA_CROPPED_URI, croppedUri.toString())
-                }
-            setResult(Activity.RESULT_OK, resultIntent)
-            finish()
+            processCropImage(cropRect, originalHighResBitmap)
         } catch (e: IOException) {
             Toast.makeText(this, "Error cropping image: ${e.message}", Toast.LENGTH_SHORT).show()
             Log.e("CustomCrop", "Error cropping image", e)
@@ -278,6 +219,59 @@ class CustomCropActivity : AppCompatActivity() {
             Toast.makeText(this, "Out of memory cropping image", Toast.LENGTH_SHORT).show()
             Log.e("CustomCrop", "Out of memory cropping image", e)
         }
+    }
+
+    private fun processCropImage(cropRect: RectF, originalBitmap: Bitmap) {
+        val imageBounds = getImageBoundsInView()
+        Log.d("CustomCrop", "Image bounds in view: $imageBounds")
+        Log.d("CustomCrop", "Crop rect in overlay: $cropRect")
+
+        val originalWidth = originalBitmap.width
+        val originalHeight = originalBitmap.height
+
+        val imageLeft = (cropRect.left - imageBounds.left) / imageBounds.width() * originalWidth
+        val imageTop = (cropRect.top - imageBounds.top) / imageBounds.height() * originalHeight
+        val imageRight = (cropRect.right - imageBounds.left) / imageBounds.width() * originalWidth
+        val imageBottom = (cropRect.bottom - imageBounds.top) / imageBounds.height() * originalHeight
+
+        val actualCropRect = Rect(
+            imageLeft.toInt(),
+            imageTop.toInt(),
+            imageRight.toInt(),
+            imageBottom.toInt(),
+        )
+
+        actualCropRect.left = actualCropRect.left.coerceIn(0, originalWidth)
+        actualCropRect.top = actualCropRect.top.coerceIn(0, originalHeight)
+        actualCropRect.right = actualCropRect.right.coerceIn(actualCropRect.left, originalWidth)
+        actualCropRect.bottom = actualCropRect.bottom.coerceIn(actualCropRect.top, originalHeight)
+
+        Log.d("CustomCrop", "Original image: ${originalWidth}x$originalHeight")
+        Log.d(
+            "CustomCrop",
+            "Final crop rect: ${actualCropRect.width()}x${actualCropRect.height()} " +
+                "at (${actualCropRect.left},${actualCropRect.top})",
+        )
+
+        val croppedBitmap = Bitmap.createBitmap(
+            originalBitmap,
+            actualCropRect.left,
+            actualCropRect.top,
+            actualCropRect.width(),
+            actualCropRect.height(),
+        )
+
+        val croppedFile = File(cacheDir, "custom_cropped_${System.currentTimeMillis()}.jpg")
+        val outputStream = FileOutputStream(croppedFile)
+        croppedBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
+        outputStream.close()
+
+        val croppedUri = Uri.fromFile(croppedFile)
+        val resultIntent = Intent().apply {
+            putExtra(EXTRA_CROPPED_URI, croppedUri.toString())
+        }
+        setResult(Activity.RESULT_OK, resultIntent)
+        finish()
     }
 
     private fun getImageBoundsInView(): RectF {
@@ -327,371 +321,373 @@ class CustomCropActivity : AppCompatActivity() {
 }
 
 class CropOverlayView
-@JvmOverloads
-constructor(
-    context: android.content.Context,
-    attrs: android.util.AttributeSet? = null,
-    defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr) {
-    private var bitmap: Bitmap? = null
-    private val cropRect = RectF(CROP_RECT_LEFT, CROP_RECT_TOP, CROP_RECT_RIGHT, CROP_RECT_BOTTOM)
-    private val paint =
-        Paint().apply {
-            color = Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = STROKE_WIDTH
-        }
-    private val cornerPaint =
-        Paint().apply {
-            color = Color.BLUE
-            style = Paint.Style.FILL
-        }
-    private val overlayPaint =
-        Paint().apply {
-            color = Color.argb(OVERLAY_ALPHA, 0, 0, 0)
-            style = Paint.Style.FILL
-        }
+    @JvmOverloads
+    constructor(
+        context: android.content.Context,
+        attrs: android.util.AttributeSet? = null,
+        defStyleAttr: Int = 0,
+    ) : View(context, attrs, defStyleAttr) {
+        private var bitmap: Bitmap? = null
+        private val cropRect = RectF(CROP_RECT_LEFT, CROP_RECT_TOP, CROP_RECT_RIGHT, CROP_RECT_BOTTOM)
+        private val paint =
+            Paint().apply {
+                color = Color.WHITE
+                style = Paint.Style.STROKE
+                strokeWidth = STROKE_WIDTH
+            }
+        private val cornerPaint =
+            Paint().apply {
+                color = Color.BLUE
+                style = Paint.Style.FILL
+            }
+        private val overlayPaint =
+            Paint().apply {
+                color = Color.argb(OVERLAY_ALPHA, 0, 0, 0)
+                style = Paint.Style.FILL
+            }
 
-    private var isDragging = false
-    private var dragHandle = -1
+        private var isDragging = false
+        private var dragHandle = -1
 
-    companion object {
-        private const val HANDLE_SIZE = 60f // Increased handle size for better touch response
-        private const val TOUCH_SLOP = 30f // Increased touch slop for better responsiveness
-        private const val CROP_RECT_LEFT = 100f
-        private const val CROP_RECT_TOP = 100f
-        private const val CROP_RECT_RIGHT = 300f
-        private const val CROP_RECT_BOTTOM = 300f
-        private const val STROKE_WIDTH = 4f
-        private const val HANDLE_INDEX_TOP_RIGHT = 1
-        private const val HANDLE_INDEX_BOTTOM_LEFT = 2
-        private const val HANDLE_INDEX_BOTTOM_RIGHT = 3
-        private const val HANDLE_INDEX_TOP = 4
-        private const val HANDLE_INDEX_BOTTOM = 5
-        private const val HANDLE_INDEX_LEFT = 6
-        private const val HANDLE_INDEX_RIGHT = 7
-        private const val OVERLAY_ALPHA = 128
-        private const val CROP_SIZE_RATIO = 0.6f
-        private const val MIN_CROP_SIZE = 200f
-    }
-
-    private val handleSize = HANDLE_SIZE
-    private val touchSlop = TOUCH_SLOP
-
-    private val handles =
-        arrayOf(
-            RectF(), // top-left
-            RectF(), // top-right
-            RectF(), // bottom-left
-            RectF(), // bottom-right
-            RectF(), // top
-            RectF(), // bottom
-            RectF(), // left
-            RectF(), // right
-        )
-
-    private var imageView: ImageView? = null
-
-    fun setImageBitmap(
-        bitmap: Bitmap,
-        imageView: ImageView,
-    ) {
-        this.bitmap = bitmap
-        this.imageView = imageView
-        // Initialize crop rectangle to center of actual image area
-        post {
-            initializeCropRectangle()
-        }
-    }
-
-    private fun initializeCropRectangle() {
-        val imageBounds = getImageBoundsInView()
-        val centerX = imageBounds.centerX()
-        val centerY = imageBounds.centerY()
-
-        // Make crop rectangle responsive to orientation
-        val availableWidth = imageBounds.width()
-        val availableHeight = imageBounds.height()
-        val minDimension = minOf(availableWidth, availableHeight)
-
-        // Use 60% of the smaller dimension, but ensure minimum size
-        val size = maxOf(minDimension * CROP_SIZE_RATIO, MIN_CROP_SIZE)
-
-        cropRect.set(
-            centerX - size / 2,
-            centerY - size / 2,
-            centerX + size / 2,
-            centerY + size / 2,
-        )
-
-        // Ensure crop rectangle is within bounds
-        cropRect.left = cropRect.left.coerceIn(imageBounds.left, imageBounds.right - handleSize)
-        cropRect.top = cropRect.top.coerceIn(imageBounds.top, imageBounds.bottom - handleSize)
-        cropRect.right = cropRect.right.coerceIn(cropRect.left + handleSize, imageBounds.right)
-        cropRect.bottom = cropRect.bottom.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
-
-        updateHandles()
-        invalidate()
-    }
-
-    private fun getImageBoundsInView(): RectF {
-        val imageView = this.imageView
-        val drawable = imageView?.drawable
-
-        if (imageView == null || drawable == null) {
-            return RectF(0f, 0f, width.toFloat(), height.toFloat())
+        companion object {
+            private const val HANDLE_SIZE = 60f // Increased handle size for better touch response
+            private const val TOUCH_SLOP = 30f // Increased touch slop for better responsiveness
+            private const val CROP_RECT_LEFT = 100f
+            private const val CROP_RECT_TOP = 100f
+            private const val CROP_RECT_RIGHT = 300f
+            private const val CROP_RECT_BOTTOM = 300f
+            private const val STROKE_WIDTH = 4f
+            private const val HANDLE_INDEX_TOP_RIGHT = 1
+            private const val HANDLE_INDEX_BOTTOM_LEFT = 2
+            private const val HANDLE_INDEX_BOTTOM_RIGHT = 3
+            private const val HANDLE_INDEX_TOP = 4
+            private const val HANDLE_INDEX_BOTTOM = 5
+            private const val HANDLE_INDEX_LEFT = 6
+            private const val HANDLE_INDEX_RIGHT = 7
+            private const val OVERLAY_ALPHA = 128
+            private const val CROP_SIZE_RATIO = 0.6f
+            private const val MIN_CROP_SIZE = 200f
         }
 
-        val viewWidth = width.toFloat()
-        val viewHeight = height.toFloat()
-        val imageWidth = drawable.intrinsicWidth.toFloat()
-        val imageHeight = drawable.intrinsicHeight.toFloat()
+        private val handleSize = HANDLE_SIZE
+        private val touchSlop = TOUCH_SLOP
 
-        // Calculate scale to fit the image within the view (fitCenter)
-        val scale = minOf(viewWidth / imageWidth, viewHeight / imageHeight)
+        private val handles =
+            arrayOf(
+                RectF(), // top-left
+                RectF(), // top-right
+                RectF(), // bottom-left
+                RectF(), // bottom-right
+                RectF(), // top
+                RectF(), // bottom
+                RectF(), // left
+                RectF(), // right
+            )
 
-        val scaledImageWidth = imageWidth * scale
-        val scaledImageHeight = imageHeight * scale
+        private var imageView: ImageView? = null
 
-        // Calculate the position to center the image
-        val left = (viewWidth - scaledImageWidth) / 2
-        val top = (viewHeight - scaledImageHeight) / 2
-
-        return RectF(left, top, left + scaledImageWidth, top + scaledImageHeight)
-    }
-
-    fun getCropRect(): RectF = RectF(cropRect)
-
-    fun updateForOrientationChange() {
-        // Recalculate crop rectangle position when orientation changes
-        post {
-            val imageBounds = getImageBoundsInView()
-            val currentCropRect = RectF(cropRect)
-
-            // Only update if we have valid image bounds
-            if (imageBounds.width() > 0 && imageBounds.height() > 0) {
-                // Calculate the relative position within the image bounds
-                val relativeLeft = (currentCropRect.left - imageBounds.left) / imageBounds.width()
-                val relativeTop = (currentCropRect.top - imageBounds.top) / imageBounds.height()
-                val relativeRight = (currentCropRect.right - imageBounds.left) / imageBounds.width()
-                val relativeBottom = (currentCropRect.bottom - imageBounds.top) / imageBounds.height()
-
-                // Apply the relative positions to the new image bounds
-                val newLeft = imageBounds.left + relativeLeft * imageBounds.width()
-                val newTop = imageBounds.top + relativeTop * imageBounds.height()
-                val newRight = imageBounds.left + relativeRight * imageBounds.width()
-                val newBottom = imageBounds.top + relativeBottom * imageBounds.height()
-
-                // Ensure the crop rectangle stays within bounds
-                cropRect.set(
-                    newLeft.coerceIn(imageBounds.left, imageBounds.right - handleSize),
-                    newTop.coerceIn(imageBounds.top, imageBounds.bottom - handleSize),
-                    newRight.coerceIn(imageBounds.left + handleSize, imageBounds.right),
-                    newBottom.coerceIn(imageBounds.top + handleSize, imageBounds.bottom),
-                )
-
-                updateHandles()
-                invalidate()
-            } else {
-                // If bounds are not ready, reinitialize the crop rectangle
+        fun setImageBitmap(
+            bitmap: Bitmap,
+            imageView: ImageView,
+        ) {
+            this.bitmap = bitmap
+            this.imageView = imageView
+            // Initialize crop rectangle to center of actual image area
+            post {
                 initializeCropRectangle()
             }
         }
-    }
 
-    override fun onSizeChanged(
-        w: Int,
-        h: Int,
-        oldw: Int,
-        oldh: Int,
-    ) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        // Update crop rectangle when view size changes (e.g., during orientation change)
-        post {
-            updateForOrientationChange()
-        }
-    }
+        private fun initializeCropRectangle() {
+            val imageBounds = getImageBoundsInView()
+            val centerX = imageBounds.centerX()
+            val centerY = imageBounds.centerY()
 
-    private fun updateHandles() {
-        val halfHandle = handleSize / 2
+            // Make crop rectangle responsive to orientation
+            val availableWidth = imageBounds.width()
+            val availableHeight = imageBounds.height()
+            val minDimension = minOf(availableWidth, availableHeight)
 
-        // Corner handles
-        handles[0].set(
-            cropRect.left - halfHandle,
-            cropRect.top - halfHandle,
-            cropRect.left + halfHandle,
-            cropRect.top + halfHandle,
-        ) // top-left
-        handles[1].set(
-            cropRect.right - halfHandle,
-            cropRect.top - halfHandle,
-            cropRect.right + halfHandle,
-            cropRect.top + halfHandle,
-        ) // top-right
-        handles[HANDLE_INDEX_BOTTOM_LEFT].set(
-            cropRect.left - halfHandle,
-            cropRect.bottom - halfHandle,
-            cropRect.left + halfHandle,
-            cropRect.bottom + halfHandle,
-        ) // bottom-left
-        handles[HANDLE_INDEX_BOTTOM_RIGHT].set(
-            cropRect.right - halfHandle,
-            cropRect.bottom - halfHandle,
-            cropRect.right + halfHandle,
-            cropRect.bottom + halfHandle,
-        ) // bottom-right
+            // Use 60% of the smaller dimension, but ensure minimum size
+            val size = maxOf(minDimension * CROP_SIZE_RATIO, MIN_CROP_SIZE)
 
-        // Edge handles
-        handles[HANDLE_INDEX_TOP].set(
-            cropRect.centerX() - halfHandle,
-            cropRect.top - halfHandle,
-            cropRect.centerX() + halfHandle,
-            cropRect.top + halfHandle,
-        ) // top
-        handles[HANDLE_INDEX_BOTTOM].set(
-            cropRect.centerX() - halfHandle,
-            cropRect.bottom - halfHandle,
-            cropRect.centerX() + halfHandle,
-            cropRect.bottom + halfHandle,
-        ) // bottom
-        handles[HANDLE_INDEX_LEFT].set(
-            cropRect.left - halfHandle,
-            cropRect.centerY() - halfHandle,
-            cropRect.left + halfHandle,
-            cropRect.centerY() + halfHandle,
-        ) // left
-        handles[HANDLE_INDEX_RIGHT].set(
-            cropRect.right - halfHandle,
-            cropRect.centerY() - halfHandle,
-            cropRect.right + halfHandle,
-            cropRect.centerY() + halfHandle,
-        ) // right
-    }
+            cropRect.set(
+                centerX - size / 2,
+                centerY - size / 2,
+                centerX + size / 2,
+                centerY + size / 2,
+            )
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+            // Ensure crop rectangle is within bounds
+            cropRect.left = cropRect.left.coerceIn(imageBounds.left, imageBounds.right - handleSize)
+            cropRect.top = cropRect.top.coerceIn(imageBounds.top, imageBounds.bottom - handleSize)
+            cropRect.right = cropRect.right.coerceIn(cropRect.left + handleSize, imageBounds.right)
+            cropRect.bottom = cropRect.bottom.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
 
-        // Draw semi-transparent overlay
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
-
-        // Clear the crop area
-        canvas.save()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            canvas.clipOutRect(cropRect)
-        } else {
-            @Suppress("DEPRECATION")
-            canvas.clipRect(cropRect, android.graphics.Region.Op.DIFFERENCE)
-        }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
-        canvas.restore()
-
-        // Draw crop rectangle border
-        canvas.drawRect(cropRect, paint)
-
-        // Draw corner handles
-        for (i in 0..HANDLE_INDEX_BOTTOM_RIGHT) {
-            canvas.drawRect(handles[i], cornerPaint)
+            updateHandles()
+            invalidate()
         }
 
-        // Draw edge handles
-        for (i in HANDLE_INDEX_TOP..HANDLE_INDEX_RIGHT) {
-            canvas.drawRect(handles[i], cornerPaint)
-        }
-    }
+        private fun getImageBoundsInView(): RectF {
+            val imageView = this.imageView
+            val drawable = imageView?.drawable
 
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                val x = event.x
-                val y = event.y
-                dragHandle = findHandle(x, y)
-                isDragging = dragHandle != -1
-                if (isDragging) {
-                    parent.requestDisallowInterceptTouchEvent(true)
-                }
-                return isDragging
+            if (imageView == null || drawable == null) {
+                return RectF(0f, 0f, width.toFloat(), height.toFloat())
             }
-            MotionEvent.ACTION_MOVE -> {
-                if (isDragging && dragHandle != -1) {
-                    val x = event.x.coerceIn(0f, width.toFloat())
-                    val y = event.y.coerceIn(0f, height.toFloat())
-                    updateCropRect(x, y)
+
+            val viewWidth = width.toFloat()
+            val viewHeight = height.toFloat()
+            val imageWidth = drawable.intrinsicWidth.toFloat()
+            val imageHeight = drawable.intrinsicHeight.toFloat()
+
+            // Calculate scale to fit the image within the view (fitCenter)
+            val scale = minOf(viewWidth / imageWidth, viewHeight / imageHeight)
+
+            val scaledImageWidth = imageWidth * scale
+            val scaledImageHeight = imageHeight * scale
+
+            // Calculate the position to center the image
+            val left = (viewWidth - scaledImageWidth) / 2
+            val top = (viewHeight - scaledImageHeight) / 2
+
+            return RectF(left, top, left + scaledImageWidth, top + scaledImageHeight)
+        }
+
+        fun getCropRect(): RectF = RectF(cropRect)
+
+        fun updateForOrientationChange() {
+            // Recalculate crop rectangle position when orientation changes
+            post {
+                val imageBounds = getImageBoundsInView()
+                val currentCropRect = RectF(cropRect)
+
+                // Only update if we have valid image bounds
+                if (imageBounds.width() > 0 && imageBounds.height() > 0) {
+                    // Calculate the relative position within the image bounds
+                    val relativeLeft = (currentCropRect.left - imageBounds.left) / imageBounds.width()
+                    val relativeTop = (currentCropRect.top - imageBounds.top) / imageBounds.height()
+                    val relativeRight = (currentCropRect.right - imageBounds.left) / imageBounds.width()
+                    val relativeBottom = (currentCropRect.bottom - imageBounds.top) / imageBounds.height()
+
+                    // Apply the relative positions to the new image bounds
+                    val newLeft = imageBounds.left + relativeLeft * imageBounds.width()
+                    val newTop = imageBounds.top + relativeTop * imageBounds.height()
+                    val newRight = imageBounds.left + relativeRight * imageBounds.width()
+                    val newBottom = imageBounds.top + relativeBottom * imageBounds.height()
+
+                    // Ensure the crop rectangle stays within bounds
+                    cropRect.set(
+                        newLeft.coerceIn(imageBounds.left, imageBounds.right - handleSize),
+                        newTop.coerceIn(imageBounds.top, imageBounds.bottom - handleSize),
+                        newRight.coerceIn(imageBounds.left + handleSize, imageBounds.right),
+                        newBottom.coerceIn(imageBounds.top + handleSize, imageBounds.bottom),
+                    )
+
                     updateHandles()
                     invalidate()
-                    return true
+                } else {
+                    // If bounds are not ready, reinitialize the crop rectangle
+                    initializeCropRectangle()
                 }
             }
-            MotionEvent.ACTION_UP -> {
-                isDragging = false
-                dragHandle = -1
-                parent.requestDisallowInterceptTouchEvent(false)
-                return true
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                isDragging = false
-                dragHandle = -1
-                parent.requestDisallowInterceptTouchEvent(false)
-                return true
+        }
+
+        override fun onSizeChanged(
+            w: Int,
+            h: Int,
+            oldw: Int,
+            oldh: Int,
+        ) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            // Update crop rectangle when view size changes (e.g., during orientation change)
+            post {
+                updateForOrientationChange()
             }
         }
-        return super.onTouchEvent(event)
-    }
 
-    private fun findHandle(
-        x: Float,
-        y: Float,
-    ): Int {
-        for (i in handles.indices) {
-            // Expand touch area for better responsiveness
-            val expandedHandle =
-                RectF(
+        private fun updateHandles() {
+            val halfHandle = handleSize / 2
+
+            // Corner handles
+            handles[0].set(
+                cropRect.left - halfHandle,
+                cropRect.top - halfHandle,
+                cropRect.left + halfHandle,
+                cropRect.top + halfHandle,
+            ) // top-left
+            handles[1].set(
+                cropRect.right - halfHandle,
+                cropRect.top - halfHandle,
+                cropRect.right + halfHandle,
+                cropRect.top + halfHandle,
+            ) // top-right
+            handles[HANDLE_INDEX_BOTTOM_LEFT].set(
+                cropRect.left - halfHandle,
+                cropRect.bottom - halfHandle,
+                cropRect.left + halfHandle,
+                cropRect.bottom + halfHandle,
+            ) // bottom-left
+            handles[HANDLE_INDEX_BOTTOM_RIGHT].set(
+                cropRect.right - halfHandle,
+                cropRect.bottom - halfHandle,
+                cropRect.right + halfHandle,
+                cropRect.bottom + halfHandle,
+            ) // bottom-right
+
+            // Edge handles
+            handles[HANDLE_INDEX_TOP].set(
+                cropRect.centerX() - halfHandle,
+                cropRect.top - halfHandle,
+                cropRect.centerX() + halfHandle,
+                cropRect.top + halfHandle,
+            ) // top
+            handles[HANDLE_INDEX_BOTTOM].set(
+                cropRect.centerX() - halfHandle,
+                cropRect.bottom - halfHandle,
+                cropRect.centerX() + halfHandle,
+                cropRect.bottom + halfHandle,
+            ) // bottom
+            handles[HANDLE_INDEX_LEFT].set(
+                cropRect.left - halfHandle,
+                cropRect.centerY() - halfHandle,
+                cropRect.left + halfHandle,
+                cropRect.centerY() + halfHandle,
+            ) // left
+            handles[HANDLE_INDEX_RIGHT].set(
+                cropRect.right - halfHandle,
+                cropRect.centerY() - halfHandle,
+                cropRect.right + halfHandle,
+                cropRect.centerY() + halfHandle,
+            ) // right
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+
+            // Draw semi-transparent overlay
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+
+            // Clear the crop area
+            canvas.save()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                canvas.clipOutRect(cropRect)
+            } else {
+                @Suppress("DEPRECATION")
+                canvas.clipRect(cropRect, android.graphics.Region.Op.DIFFERENCE)
+            }
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), overlayPaint)
+            canvas.restore()
+
+            // Draw crop rectangle border
+            canvas.drawRect(cropRect, paint)
+
+            // Draw corner handles
+            for (i in 0..HANDLE_INDEX_BOTTOM_RIGHT) {
+                canvas.drawRect(handles[i], cornerPaint)
+            }
+
+            // Draw edge handles
+            for (i in HANDLE_INDEX_TOP..HANDLE_INDEX_RIGHT) {
+                canvas.drawRect(handles[i], cornerPaint)
+            }
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val x = event.x.coerceIn(0f, width.toFloat())
+            val y = event.y.coerceIn(0f, height.toFloat())
+            val handled = handleTouchInteraction(x, y, event.action)
+            
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (handled) {
+                        parent.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (handled) {
+                        updateHandles()
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    parent.requestDisallowInterceptTouchEvent(false)
+                }
+            }
+            
+            return handled || super.onTouchEvent(event)
+        }
+
+        private fun handleTouchInteraction(x: Float, y: Float, action: Int): Boolean {
+            return when (action) {
+                MotionEvent.ACTION_DOWN -> {
+                    dragHandle = findHandle(x, y)
+                    isDragging = dragHandle != -1
+                    isDragging
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (isDragging && dragHandle != -1) {
+                        updateCropRect(x, y)
+                        invalidate()
+                        true
+                    } else {
+                        false
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    isDragging = false
+                    dragHandle = -1
+                    false
+                }
+                else -> false
+            }
+        }
+
+        private fun updateCropRect(x: Float, y: Float) {
+            val imageBounds = getImageBoundsInView()
+            when (dragHandle) {
+                0 -> {
+                    cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
+                    cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
+                }
+                HANDLE_INDEX_TOP_RIGHT -> {
+                    cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
+                    cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
+                }
+                HANDLE_INDEX_BOTTOM_LEFT -> {
+                    cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
+                    cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
+                }
+                HANDLE_INDEX_BOTTOM_RIGHT -> {
+                    cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
+                    cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
+                }
+                HANDLE_INDEX_TOP -> {
+                    cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
+                }
+                HANDLE_INDEX_BOTTOM -> {
+                    cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
+                }
+                HANDLE_INDEX_LEFT -> {
+                    cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
+                }
+                HANDLE_INDEX_RIGHT -> {
+                    cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
+                }
+            }
+        }
+
+        private fun findHandle(x: Float, y: Float): Int {
+            for (i in handles.indices) {
+                val expandedHandle = RectF(
                     handles[i].left - touchSlop,
                     handles[i].top - touchSlop,
                     handles[i].right + touchSlop,
                     handles[i].bottom + touchSlop,
                 )
-            if (expandedHandle.contains(x, y)) {
-                return i
+                if (expandedHandle.contains(x, y)) {
+                    return i
+                }
             }
-        }
-        return -1
-    }
-
-    private fun updateCropRect(
-        x: Float,
-        y: Float,
-    ) {
-        val imageBounds = getImageBoundsInView()
-
-        when (dragHandle) {
-            0 -> { // top-left
-                cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
-                cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
-            }
-            HANDLE_INDEX_TOP_RIGHT -> { // top-right
-                cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
-                cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
-            }
-            HANDLE_INDEX_BOTTOM_LEFT -> { // bottom-left
-                cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
-                cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
-            }
-            HANDLE_INDEX_BOTTOM_RIGHT -> { // bottom-right
-                cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
-                cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
-            }
-            HANDLE_INDEX_TOP -> { // top
-                cropRect.top = y.coerceIn(imageBounds.top, cropRect.bottom - handleSize)
-            }
-            HANDLE_INDEX_BOTTOM -> { // bottom
-                cropRect.bottom = y.coerceIn(cropRect.top + handleSize, imageBounds.bottom)
-            }
-            HANDLE_INDEX_LEFT -> { // left
-                cropRect.left = x.coerceIn(imageBounds.left, cropRect.right - handleSize)
-            }
-            HANDLE_INDEX_RIGHT -> { // right
-                cropRect.right = x.coerceIn(cropRect.left + handleSize, imageBounds.right)
-            }
+            return -1
         }
     }
-}
