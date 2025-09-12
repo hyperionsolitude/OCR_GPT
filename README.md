@@ -1,8 +1,6 @@
 # OCR GPT Android App
 
 [![Android CI](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/android-ci.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/android-ci.yml)
-[![Code Quality](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/code-quality.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/code-quality.yml)
-[![Dependency Review](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/hyperionsolitude/OCR_GPT/actions/workflows/dependency-review.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A powerful, optimized Android application that combines Optical Character Recognition (OCR) with AI-powered question answering and conversational capabilities. Built with modern Android development practices and optimized for performance.
@@ -187,7 +185,6 @@ Permissions are requested at runtime when needed.
 
 ## 🔄 CI/CD & Automation
 - Single workflow: **Android CI** runs tests, code quality (ktlint, detekt, lint), and builds APKs on every push/PR
-- **Dependency Review**: Security scanning for dependencies
 - **CodeQL**: Vulnerability detection for Kotlin/Java
 
 ## 📄 License
