@@ -13,7 +13,7 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 - Android Studio (latest version)
 - Android SDK (API level 21 or higher)
 - Git
-- Java 11 or higher
+- JDK 17
 
 ### Development Setup
 
@@ -39,14 +39,15 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 - Use meaningful variable and function names
 - Add comments for complex logic
 - Keep functions small and focused
-- Use proper indentation (4 spaces for Kotlin)
+- Use proper indentation (match existing project style)
 
 ### Code Quality
 
 - All code must pass ktlint checks
 - All code must pass detekt static analysis
+- Run Android Lint and fix issues where feasible
 - Write unit tests for new functionality
-- Ensure all tests pass before submitting
+- Ensure all checks pass locally before submitting
 
 ### Commit Messages
 
@@ -62,32 +63,33 @@ refactor: extract common OCR logic to utility class
 
 ## Pull Request Process
 
-1. Create a feature branch from `main`:
+1. Create a feature branch from `android`:
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b feat/your-feature-name
    ```
 
 2. Make your changes following the guidelines above
 
 3. Run tests and quality checks:
    ```bash
-   ./gradlew test
-   ./gradlew lint
+   ./gradlew testDebugUnitTest
+   ./gradlew ktlintCheck
    ./gradlew detekt
+   ./gradlew lintDebug
    ```
 
 4. Commit your changes with descriptive messages
 
 5. Push to your fork:
    ```bash
-   git push origin feature/your-feature-name
+   git push origin feat/your-feature-name
    ```
 
 6. Create a Pull Request with:
    - Clear description of changes
    - Reference to any related issues
    - Screenshots if UI changes
-   - Test results
+   - Test and lint results
 
 ## Testing
 
@@ -131,11 +133,11 @@ When suggesting new features:
 
 Releases are managed through GitHub Actions:
 
-1. Version bump in `build.gradle`
+1. Version bump in `app/build.gradle`
 2. Update `CHANGELOG.md`
-3. Create and push a tag: `git tag v1.0.0`
-4. Push tag: `git push origin v1.0.0`
-5. GitHub Actions will automatically create a release
+3. Create and push a tag: `git tag vX.Y.Z`
+4. Push tag: `git push origin vX.Y.Z`
+5. The release workflow will build artifacts
 
 ## Documentation
 

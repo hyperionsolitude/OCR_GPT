@@ -19,8 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EditorConfig for consistent code formatting
 
 ### Changed
-- Updated README with CI/CD badges and automation information
-- Enhanced build configuration with code quality tools
+- Upgraded Gradle wrapper to 8.9 and Android Gradle Plugin to 8.7.0
+- Updated Kotlin to 1.9.24 and target/compile SDK to 35
+- Merged CI workflows into a single `android-ci.yml` (tests, quality, builds, CodeQL)
+- Updated README and QUICK_START for JDK 17 and accurate features
+- Refactored code to satisfy ktlint and detekt
 
 ## [1.0.0] - 2025-01-27
 

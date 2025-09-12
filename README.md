@@ -21,7 +21,7 @@ A powerful, optimized Android application that combines Optical Character Recogn
 - **✂️ Image Cropping**: Built-in image cropping functionality with orientation support
 - **📋 Copy/Paste**: Easy copying of prompts and responses with copy buttons for code blocks
 - **🌙 Dark Theme**: Consistent dark-themed dialogs and controls
-- **🌍 Language Support**: AI automatically replies in the input language
+- **🌐 Language Behavior**: Replies in English by default; other languages on explicit request
 - **♿ Accessibility**: Full accessibility support with content descriptions
 
 ### ⚡ **Performance & Reliability**
@@ -34,32 +34,34 @@ A powerful, optimized Android application that combines Optical Character Recogn
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Android Studio (latest version)
-- Android SDK (API level 21 or higher)
+- Android Studio (latest)
+- JDK 17 (Temurin recommended)
+- Android SDK (compileSdk 35, minSdk 21)
 - Android device or emulator
 - Groq API key
 
 ### Installation
 
 1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/hyperionsolitude/OCR_GPT.git
-   cd OCR_GPT
-   ```
+```bash
+git clone https://github.com/hyperionsolitude/OCR_GPT.git
+cd OCR_GPT
+```
 
 2. **Set up Android SDK**:
-   - Set `ANDROID_HOME` environment variable to your Android SDK path
-   - Or update `local.properties` with your SDK path: `sdk.dir=/path/to/your/Android/Sdk`
+- Set `ANDROID_HOME` to your Android SDK path, or
+- Update `local.properties`: `sdk.dir=/path/to/your/Android/Sdk`
 
 3. **Build and install**:
-   ```bash
-   ./gradlew assembleDebug
-   ./gradlew installDebug
-   ```
+```bash
+chmod +x gradlew
+./gradlew assembleDebug
+./gradlew installDebug
+```
 
 4. **Configure API key**:
-   - The app will prompt you for your Groq API key on first launch
-   - Get your API key from [Groq Console](https://console.groq.com/)
+- The app will prompt you for your Groq API key on first launch
+- Get your API key from [Groq Console](https://console.groq.com/)
 
 ## 📖 Usage Guide
 
@@ -109,32 +111,30 @@ A powerful, optimized Android application that combines Optical Character Recogn
 ## 🔧 Configuration
 
 ### API Integration
-The app integrates with Groq API for AI responses. Models are fetched dynamically at runtime, ensuring access to the latest models.
+The app integrates with Groq API for AI responses. Models are fetched dynamically at runtime.
 
 **Getting Your API Key**:
 1. Visit [Groq Console](https://console.groq.com/)
-2. Sign up or log in to your account
-3. Navigate to the "API Keys" section
+2. Sign up or log in
+3. Navigate to "API Keys"
 4. Create a new API key
 5. Enter the key when prompted by the app
 
 ### Model Management
 - Models are fetched dynamically from Groq API
-- Only text-based models are included (excludes image, TTS, etc.)
+- Only text-based models are included
 - Models are sorted alphabetically for consistent ordering
 - Fallback to default models if API is unavailable
 
 ### Language Behavior
-- AI automatically detects input language and responds accordingly
-- English responses by default unless specifically requested otherwise
-- Supports multiple languages including Arabic, Spanish, French, etc.
+- English responses by default
+- Other languages supported on explicit request
 
 ## 📱 Permissions
 
 The app requires the following permissions:
 - **Camera**: For capturing images
 - **Internet**: For AI API communication
-- **Storage**: For saving and accessing images
 
 Permissions are requested at runtime when needed.
 
@@ -142,21 +142,17 @@ Permissions are requested at runtime when needed.
 
 ### **Educational**
 - Solve math problems from photos
-- Analyze scientific diagrams
 - Extract text from textbooks
-- Get explanations for complex concepts
+- Get explanations for concepts
 
 ### **Professional**
 - Process documents and forms
 - Extract data from screenshots
-- Analyze charts and graphs
 - Translate text from images
 
 ### **Personal**
 - Read text from signs and menus
 - Extract text from handwritten notes
-- Get information from product labels
-- Solve puzzles and riddles
 
 ## 🔍 Troubleshooting
 
@@ -170,100 +166,33 @@ Permissions are requested at runtime when needed.
 **API Issues**:
 - Verify Groq API key is valid and active
 - Check internet connection
-- Ensure API key has sufficient credits
-- Try refreshing models in settings
 
 **OCR Issues**:
 - Ensure image has clear, readable text
 - Check lighting conditions
 - Try cropping the image to focus on text
-- Verify camera permissions are granted
 
 **Performance Issues**:
 - Close other apps to free up memory
 - Restart the app if it becomes slow
-- Check available storage space
-- Update to the latest version
 
 ### Getting Help
 - Check the logs for detailed error messages
 - Ensure you're using the latest version
-- Verify your device meets minimum requirements
-- Contact support with specific error details
-
-## 🚀 Performance Features
-
-### **Optimizations**
-- **Memory Management**: Automatic cleanup of bitmaps and resources
-- **Image Processing**: Efficient resizing and enhancement algorithms
-- **Background Processing**: Non-blocking UI operations
-- **Progress Indicators**: Real-time feedback during processing
-- **Error Recovery**: Graceful handling of failures
-
-### **Accessibility**
-- **Content Descriptions**: Full screen reader support
-- **High Contrast**: Optimized for visibility
-- **Large Text**: Support for system font scaling
-- **Touch Targets**: Appropriately sized interactive elements
 
 ## 📊 System Requirements
-
-- **Android Version**: 5.0 (API level 21) or higher
+- **Android Version**: 5.0 (API 21) or higher
+- **JDK**: 17
 - **RAM**: 2GB minimum, 4GB recommended
-- **Storage**: 100MB available space
-- **Camera**: Required for OCR functionality
-- **Internet**: Required for AI features
 
-## 🔄 Updates & Maintenance
-
-### **Version History**
-- **v1.0**: Initial release with basic OCR and AI integration
-- **v1.1**: Added conversation context and model selection
-- **v1.2**: Implemented image cropping and copy functionality
-- **v1.3**: Added accessibility features and performance optimizations
-
-### **Future Roadmap**
-- Enhanced image preprocessing
-- Additional AI model support
-- Offline OCR capabilities
-- Advanced conversation management
-- Export functionality
+## 🔄 CI/CD & Automation
+- Single workflow: **Android CI** runs tests, code quality (ktlint, detekt, lint), and builds APKs on every push/PR
+- **Dependency Review**: Security scanning for dependencies
+- **CodeQL**: Vulnerability detection for Kotlin/Java
 
 ## 📄 License
 
 This project is open source and available under the [MIT License](LICENSE).
-
-## 🔄 CI/CD & Automation
-
-This project includes comprehensive GitHub Actions workflows for:
-
-### **Automated Testing & Building**
-- **Android CI**: Automated testing, linting, and APK building on every push/PR
-- **Code Quality**: Ktlint and Detekt code quality checks
-- **Dependency Review**: Security scanning for dependencies
-- **Release Automation**: Automated releases with APK signing
-
-### **Quality Assurance**
-- **Lint Checks**: Android lint with custom rules
-- **Code Style**: Ktlint for Kotlin code formatting
-- **Static Analysis**: Detekt for code quality and complexity analysis
-- **Security Scanning**: CodeQL for vulnerability detection
-
-### **Build Artifacts**
-- Debug and Release APKs are automatically built and uploaded as artifacts
-- Test reports and lint results are available for download
-- Automated release creation with signed APKs
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
-
-## 📞 Support
-
-For support, questions, or feedback:
-- Open an issue on GitHub
-- Check the troubleshooting section
-- Review the documentation
 
 ---
 
