@@ -2,7 +2,6 @@
 
 package com.ocrgpt
 
-import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -11,7 +10,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -37,8 +35,6 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -56,13 +52,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 // Data class to represent a conversation message
 data class ConversationMessage(
-    val role: String, // "user" or "assistant"
+    val role: String,
+    // role is either "user" or "assistant"
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
 )
@@ -73,8 +67,7 @@ class MainActivity : AppCompatActivity() {
         private const val PROGRESS_DELAY_MS = 100L
         private const val PROGRESS_DURATION_MS = 300L
 
-        // Removed: old enhancement-related constants
-
+        // Removed old enhancement-related constants
         // API constants
         private const val MAX_REQUEST_SIZE = 1024
         private const val TIMEOUT_FACTOR = 0.3f
@@ -83,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         private const val LEGACY_RESOLVE_FLAGS = 0
         private const val ANDROID_API_TIRAMISU = 33
 
-        // Removed: old color processing bit constants
+        // Removed old color processing bit constants
     }
 
     private lateinit var imageView: ImageView

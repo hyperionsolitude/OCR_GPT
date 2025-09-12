@@ -89,12 +89,13 @@ class CustomCropActivity : AppCompatActivity() {
                 BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
+            // Decode stream to read image bounds only
             val inputStream = contentResolver.openInputStream(imageUri!!)
             BitmapFactory.decodeStream(inputStream, null, options)
             inputStream?.close()
 
             // Calculate sample size to fit in memory
-            val maxSize = MAX_DISPLAY_SIZE // Maximum dimension for display
+            val maxSize = MAX_DISPLAY_SIZE
             val sampleSize =
                 maxOf(
                     options.outWidth / maxSize,
@@ -106,7 +107,7 @@ class CustomCropActivity : AppCompatActivity() {
             val decodeOptions =
                 BitmapFactory.Options().apply {
                     inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.RGB_565 // Use less memory
+                    inPreferredConfig = Bitmap.Config.RGB_565
                 }
 
             val decodeInputStream = contentResolver.openInputStream(imageUri!!)
@@ -382,14 +383,22 @@ class CropOverlayView
 
         private val handles =
             arrayOf(
-                RectF(), // top-left
-                RectF(), // top-right
-                RectF(), // bottom-left
-                RectF(), // bottom-right
-                RectF(), // top
-                RectF(), // bottom
-                RectF(), // left
-                RectF(), // right
+                // top-left
+                RectF(),
+                // top-right
+                RectF(),
+                // bottom-left
+                RectF(),
+                // bottom-right
+                RectF(),
+                // top
+                RectF(),
+                // bottom
+                RectF(),
+                // left
+                RectF(),
+                // right
+                RectF(),
             )
 
         private var imageView: ImageView? = null

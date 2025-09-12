@@ -3,12 +3,9 @@ package com.ocrgpt
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Bitmap
 import android.util.Log
 import android.webkit.WebView
 import android.widget.Toast
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Suppress("TooManyFunctions")
 class UIHelper(

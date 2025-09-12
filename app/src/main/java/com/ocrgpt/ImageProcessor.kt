@@ -111,8 +111,8 @@ class ImageProcessor(
     fun saveImageToGallery(
         bitmap: Bitmap,
         filename: String,
-    ): Uri? =
-        try {
+    ): Uri? {
+        return try {
             val contentValues =
                 android.content.ContentValues().apply {
                     put(MediaStore.Images.Media.DISPLAY_NAME, filename)
@@ -125,11 +125,16 @@ class ImageProcessor(
                     contentValues,
                 )
 
-            uri?.let {
-                val outputStream = context.contentResolver.openOutputStream(it)
-                bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
-                outputStream?.close()
-                it
+            if (uri == null) {
+                null
+            } else {
+                val outputStream = context.contentResolver.openOutputStream(uri) ?: return null
+                try {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, outputStream)
+                } finally {
+                    outputStream.close()
+                }
+                uri
             }
         } catch (e: SecurityException) {
             Log.e("ImageProcessor", "Security error saving image to gallery: ${e.message}")
@@ -138,4 +143,5 @@ class ImageProcessor(
             Log.e("ImageProcessor", "Illegal state error saving image to gallery: ${e.message}")
             null
         }
+    }
 }
